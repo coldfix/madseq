@@ -1,4 +1,17 @@
 #! /usr/bin/env python
+"""
+madseq - MAD-X sequence parser/transformer.
+
+Usage:
+    madseq.py [-o <output>] [<input>]
+    madseq.py (--help | --version)
+
+Options:
+    -o <output>, --output=<output>  Set output file
+    -h, --help                      Show this help
+    -v, --version                   Show version information
+
+"""
 from __future__ import division
 
 __all__ = ['Element', 'Sequence', 'File']
@@ -688,14 +701,32 @@ class File(list):
         """Format sequence to MadX format."""
         pass
 
-def main(stdin, stdout):
-    stdout.write("\n".join(map(
-        str,
-        chain.from_iterable(
-            map(transform, Sequence.detect(File.parse(stdin))))
-    )))
+def main(argv=None):
+    # parse command line options
+    from docopt import docopt
+    args = docopt(__doc__, argv, version='madseq.py 0.1')
+
+    # perform input
+    if args['<input>']:
+        with open(args['<input>'], 'rt') as f:
+            input_file = list(f)
+    else:
+        from sys import stdin as input_file
+
+    # parse data and apply transformations
+    initial = Sequence.detect(File.parse(input_file))
+    final = chain.from_iterable(map(transform, seq))
+    text = "\n".join(map(str, final))
+
+    # perform output
+    if args['--output']:
+        with open(args['--output'], 'wt') as f:
+            f.write(text)
+    else:
+        from sys import stdout
+        stdout.write(text)
+main.__doc__ = __doc__
 
 if __name__ == '__main__':
-    from sys import stdin, stdout
-    main(stdin=stdin, stdout=stdout)
+    main()
 

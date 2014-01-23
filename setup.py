@@ -27,6 +27,7 @@ setup(
     },
     install_requires=[
         'pydicti>=0.0.2',
+        'docopt'
     ],
     extras_require={
         'test-runner': ['nose']

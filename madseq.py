@@ -15,7 +15,10 @@ Options:
 """
 from __future__ import division
 
-__all__ = ['Element', 'Sequence', 'File']
+__all__ = [
+    'Element', 'Sequence', 'File',
+    'main'
+]
 
 from pydicti import odicti, dicti
 from itertools import chain

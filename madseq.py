@@ -3,7 +3,7 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-j <json>] [-o <output] [<input>]
+    madseq.py [-j <json>] [-o <output>] [<input>]
     madseq.py (--help | --version)
 
 Options:

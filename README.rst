@@ -35,7 +35,7 @@ Usage
 The command should be called as follows::
 
     Usage:
-        madseq.py [-j <json>] [-o <output] [<input>]
+        madseq.py [-j <json>] [-o <output>] [<input>]
         madseq.py (--help | --version)
 
     Options:

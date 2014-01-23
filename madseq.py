@@ -3,11 +3,12 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-o <output>] [<input>]
+    madseq.py [-j <json>] [-o <output] [<input>]
     madseq.py (--help | --version)
 
 Options:
     -o <output>, --output=<output>  Set output file
+    -j <json>, --json=<json>        Set JSON output file
     -h, --help                      Show this help
     -v, --version                   Show version information
 
@@ -18,6 +19,7 @@ __all__ = ['Element', 'Sequence', 'File']
 
 from pydicti import odicti, dicti
 from itertools import chain
+from functools import partial
 import json
 import re
 from math import ceil
@@ -584,7 +586,7 @@ def json_adjust_element(elem):
 # main
 #----------------------------------------
 
-def transform(elem):
+def transform(elem, json_file=None):
     """Transform sequence."""
     if not isinstance(elem, Sequence):
         return (elem,)
@@ -609,9 +611,6 @@ def transform(elem):
 
     # output method
     slice_method = getattr(Slice, first.pop('method', 'simple').lower())
-
-    # json output
-    json_file = first.pop('json', None)
 
     # iterate through sequence
     elems = []
@@ -714,9 +713,10 @@ def main(argv=None):
         from sys import stdin as input_file
 
     # parse data and apply transformations
-    initial = Sequence.detect(File.parse(input_file))
-    final = chain.from_iterable(map(transform, seq))
-    text = "\n".join(map(str, final))
+    original = Sequence.detect(File.parse(input_file))
+    transformation = partial(transform, json_file=args['--json'])
+    processed = chain.from_iterable(map(transformation, original))
+    text = "\n".join(map(str, processed))
 
     # perform output
     if args['--output']:

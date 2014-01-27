@@ -3,12 +3,14 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-j <json>] [-o <output>] [<input>]
+    madseq.py [-j <json>] [-s <slice>] [-m] [-o <output>] [<input>]
     madseq.py (--help | --version)
 
 Options:
     -o <output>, --output=<output>  Set output file
     -j <json>, --json=<json>        Set JSON output file
+    -s <slice>, --slice=<slice>     Select slicing
+    -m, --makethin                  Apply a MAKETHIN like transformation
     -h, --help                      Show this help
     -v, --version                   Show version information
 
@@ -409,9 +411,9 @@ def filter_default(offset, refer, elem):
     elem.at = offset + refer*elem.get('L', 0)
     return [elem]
 
-def detect_slicing(elem, slicing):
+def detect_slicing(elem, default_slicing):
     # fall through for elements without explicit slice attribute
-    slicing = elem.pop('slice', slicing)
+    slicing = elem.pop('slice', default_slicing)
     if not slicing:
         return None
     elem_len = elem.get('L', 0)
@@ -421,15 +423,16 @@ def detect_slicing(elem, slicing):
     # determine slice number, length
     m = regex.slice_per_m.match(slicing)
     if m:
-        elem.slice_num = int(ceil(abs(elem_len * m.groups()[0])))
-        elem.slice_len = elem_len / slice_num
+        slice_per_m = decimal.Decimal(m.groups()[0])
+        elem.slice_num = int(ceil(abs(elem_len * slice_per_m)))
+        elem.slice_len = elem_len / elem.slice_num
     else:
         try:
-            slicing = int(slicing)
+            slice_num = int(slicing)
         except ValueError:
             raise ValueError("Invalid slicing: %s" % slicing)
         else:
-            elem.slice_num = slicing
+            elem.slice_num = slice_num
             elem.slice_len = elem_len / slice_num
 
     # replace L property
@@ -501,7 +504,7 @@ class Typecast(object):
         # set elem_class to multipole
         elem.type = stri('multipole')
         # replace L by LRAD property
-        elem.lrad = elem.pop('L')
+        elem.lrad = elem.pop('L', None)
 
 
 
@@ -589,7 +592,9 @@ def json_adjust_element(elem):
 # main
 #----------------------------------------
 
-def transform(elem, json_file=None):
+def transform(elem, json_file=None,
+              typecast=Typecast.preserve,
+              slicing=None):
     """Transform sequence."""
     if not isinstance(elem, Sequence):
         return (elem,)
@@ -600,12 +605,7 @@ def transform(elem, json_file=None):
     offsets = dicti(entry=0, centre=decimal.Decimal(0.5), exit=1)
     refer = offsets[str(first.get('refer', 'centre'))]
 
-    # select default slicing
-    default_slice = first.pop('slice', None)
     # TODO: when to slice: explicit/always/never/{select classes}
-
-    # select typecast routine
-    typecast = getattr(Typecast, first.pop('typecast', 'preserve'))
 
     # select optics routine
     optics_file = first.pop('optics', 'inline')
@@ -622,7 +622,7 @@ def transform(elem, json_file=None):
     for elem in seq.seq[1:-1]:
         if elem.type:
             elem_len = elem.get('L', 0)
-            if detect_slicing(elem, default_slice):
+            if detect_slicing(elem, slicing):
                 typecast(elem)
                 optic, elem = slice_method(length, refer, elem)
                 if optic:
@@ -708,6 +708,13 @@ def main(argv=None):
     from docopt import docopt
     args = docopt(__doc__, argv, version='madseq.py 0.1')
 
+    # prepare filters
+    typecast = Typecast.multipole if args['--makethin'] else Typecast.preserve
+    transformation = partial(transform,
+                             json_file=args['--json'],
+                             typecast=typecast,
+                             slicing=args['--slice'])
+
     # perform input
     if args['<input>']:
         with open(args['<input>'], 'rt') as f:
@@ -717,7 +724,6 @@ def main(argv=None):
 
     # parse data and apply transformations
     original = Sequence.detect(File.parse(input_file))
-    transformation = partial(transform, json_file=args['--json'])
     processed = chain.from_iterable(map(transformation, original))
     text = "\n".join(map(str, processed))
 

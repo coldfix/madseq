@@ -26,7 +26,7 @@ setup(
         ]
     },
     install_requires=[
-        'pydicti>=0.0.2',
+        'pydicti>=0.0.3',
         'docopt'
     ],
     extras_require={

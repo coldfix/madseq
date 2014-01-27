@@ -1,6 +1,13 @@
 # encoding: utf-8
 from setuptools import setup
 
+# see: http://bugs.python.org/issue15881#msg170215
+try:
+    import multiprocessing
+except ImportError:
+    pass
+
+# prepare long_description for PyPI:
 long_description = None
 try:
     long_description = open('README.rst').read()
@@ -18,7 +25,7 @@ setup(
     maintainer='Thomas Gläßle',
     maintainer_email='t_glaessle@gmx.de',
     url='https://github.com/coldfix/madseq',
-    license=None,
+    license='MIT',
     py_modules=['madseq'],
     entry_points={
         'console_scripts': [
@@ -26,13 +33,11 @@ setup(
         ]
     },
     install_requires=[
-        'pydicti>=0.0.3',
+        'pydicti[odicti]>=0.0.3',
         'docopt'
     ],
-    extras_require={
-        'test-runner': ['nose']
-    },
     test_suite='nose.collector',
+    tests_require=['nose'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

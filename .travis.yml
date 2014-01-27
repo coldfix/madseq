@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.6"
+  - "2.7"
+  - "3.2"
+  - "3.3"
+  - "pypy"
+install:
+  - pip install nose coverage coveralls
+script:
+  # check that the script works as a drop in:
+  - python setup.py test
+  # now check the source distribution
+  - python setup.py sdist
+  - pip install $(ls ./dist/*.tar.gz | sort -rV | head -n1)
+  # and perform all the tests:
+  - coverage run --source=madseq setup.py nosetests
+after_success:
+  - coveralls

@@ -1,5 +1,6 @@
 madseq
 ------
+|Build Status| |Coverage| |Version| |Downloads| |License|
 
 Description
 ~~~~~~~~~~~
@@ -58,4 +59,25 @@ Caution
 
 - Do not add any ``at=`` position arguments in the input sequences. The
   madseq script takes care of this responsibility.
+
+
+.. |Build Status| image:: https://api.travis-ci.org/coldfix/madseq.png?branch=master
+   :target: https://travis-ci.org/coldfix/madseq
+   :alt: Build Status
+
+.. |Coverage| image:: https://coveralls.io/repos/coldfix/madseq/badge.png?branch=master
+   :target: https://coveralls.io/r/coldfix/madseq
+   :alt: Coverage
+
+.. |Version| image:: https://pypip.in/v/madseq/badge.png
+   :target: https://pypi.python.org/pypi/madseq/
+   :alt: Latest Version
+
+.. |Downloads| image:: https://pypip.in/d/madseq/badge.png
+   :target: https://pypi.python.org/pypi/madseq/
+   :alt: Downloads
+
+.. |License| image:: https://pypip.in/license/madseq/badge.png
+   :target: https://pypi.python.org/pypi/madseq/
+   :alt: License
 

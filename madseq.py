@@ -498,6 +498,11 @@ class Typecast(object):
         elif elem.type == 'quadrupole':
             elem.KNL = '{0, %s}' % (elem.K1 * elem.L,)
             del elem.K1
+        elif elem.type == 'solenoid':
+            elem.ksi = elem.KS / elem.slice_num
+            elem.lrad = elem.L / elem.slice_num
+            elem.L = 0
+            return
         else:
             return
 

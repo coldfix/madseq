@@ -421,19 +421,16 @@ def detect_slicing(elem, default_slicing):
         return None
 
     # determine slice number, length
-    m = regex.slice_per_m.match(slicing)
-    if m:
+    if isinstance(slicing, int):
+        elem.slice_num = slicing
+        elem.slice_len = elem_len / slicing
+    else:
+        m = regex.slice_per_m.match(slicing)
+        if not m:
+            raise ValueError("Invalid slicing: %s" % slicing)
         slice_per_m = decimal.Decimal(m.groups()[0])
         elem.slice_num = int(ceil(abs(elem_len * slice_per_m)))
         elem.slice_len = elem_len / elem.slice_num
-    else:
-        try:
-            slice_num = int(slicing)
-        except ValueError:
-            raise ValueError("Invalid slicing: %s" % slicing)
-        else:
-            elem.slice_num = slice_num
-            elem.slice_len = elem_len / slice_num
 
     # replace L property
     elem.L = elem.slice_len

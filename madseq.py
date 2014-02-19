@@ -293,7 +293,7 @@ class Element(object):
     Single MAD-X element.
     """
     # TODO: json
-    __slots__ = ['name', 'type', 'args']
+    __slots__ = ['name', 'type', 'args', 'slice', 'slice_len', 'slice_num']
 
     def __init__(self, name, type, args):
         """

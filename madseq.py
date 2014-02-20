@@ -3,12 +3,13 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-j <json>] [-s <slice>] [-m] [-o <output>] [<input>]
+    madseq.py [-j <json>] [-y <yaml>] [-s <slice>] [-m] [-o <output>] [<input>]
     madseq.py (--help | --version)
 
 Options:
     -o <output>, --output=<output>  Set output file
     -j <json>, --json=<json>        Set JSON output file
+    -y <yaml>, --yaml=<yaml>        Set YAML output file
     -s <slice>, --slice=<slice>     Select slicing
     -m, --makethin                  Apply a MAKETHIN like transformation
     -h, --help                      Show this help
@@ -51,7 +52,10 @@ def cast(type):
     True
 
     """
-    return lambda value: None if value is None else type(value)
+    def constructor(value):
+        return None if value is None else type(value)
+    constructor.cls = type
+    return constructor
 
 @cast
 class stri(str):
@@ -591,10 +595,47 @@ def json_adjust_element(elem):
 
 
 #----------------------------------------
+# YAML serialization utility:
+#----------------------------------------
+
+class Yaml(object):
+    def __init__(self):
+        import yaml
+        import pydicti
+        self.yaml = yaml
+        self.dict = pydicti.odicti
+
+    def dump(self, data, stream=None, **kwds):
+        yaml = self.yaml
+        class Dumper(yaml.SafeDumper):
+            pass
+        def _dict_representer(dumper, data):
+            return dumper.represent_mapping(
+                yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                data.items())
+        def _stri_representer(dumper, data):
+            return dumper.represent_str(data)
+        def _Value_representer(dumper, data):
+            return dumper.represent_str(data.value)
+        def _Decimal_representer(dumper, data):
+            return dumper.represent_scalar(u'tag:yaml.org,2002:float',
+                                           str(data).lower())
+
+        Dumper.add_representer(self.dict, _dict_representer)
+        Dumper.add_representer(stri.cls, _stri_representer)
+        Dumper.add_representer(Symbolic, _Value_representer)
+        Dumper.add_representer(Identifier, _Value_representer)
+        Dumper.add_representer(Composed, _Value_representer)
+        Dumper.add_representer(decimal.Decimal, _Decimal_representer)
+
+        return yaml.dump(data, stream, Dumper,
+                         default_flow_style=False, **kwds)
+
+#----------------------------------------
 # main
 #----------------------------------------
 
-def transform(elem, json_file=None,
+def transform(elem, json_file=None, yaml_file=None,
               typecast=Typecast.preserve,
               slicing=None):
     """Transform sequence."""
@@ -653,6 +694,12 @@ def transform(elem, json_file=None,
             indent=3,
             separators=(',', ' : '),
             cls=ValueEncoder)
+
+    if yaml_file:
+        yaml = Yaml()
+        yaml.dump(
+            list(chain.from_iterable(map(json_adjust_element, elems))),
+            open(yaml_file, 'wt'))
 
     return (optics +
             [Text('! Sequence definition for %s:' % first.name),
@@ -714,6 +761,7 @@ def main(argv=None):
     typecast = Typecast.multipole if args['--makethin'] else Typecast.preserve
     transformation = partial(transform,
                              json_file=args['--json'],
+                             yaml_file=args['--yaml'],
                              typecast=typecast,
                              slicing=args['--slice'])
 

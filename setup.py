@@ -17,7 +17,7 @@ except IOError:
 
 setup(
     name='madseq',
-    version='0.1',
+    version='0.2',
     description='Parser/transformator for MAD-X sequences',
     long_description=long_description,
     author='Thomas Gläßle',
@@ -36,6 +36,9 @@ setup(
         'pydicti[odicti]>=0.0.3',
         'docopt'
     ],
+    extras_require={
+        'yaml': ['pyyaml']
+    },
     test_suite='nose.collector',
     tests_require=['nose'],
     classifiers=[

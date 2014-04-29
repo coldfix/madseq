@@ -111,7 +111,8 @@ class regex(object):
     thingy = Re(r'(?:[^\s,;!]+)')
     identifier = Re(r'(?:[a-zA-Z][\w\.]*)')
     string = Re(r'(?:"[^"]*")')
-    param = Re(r'(?:',string,'|',thingy,')')
+    array = Re(r'(?:\{[^\}]*\})')
+    param = Re(r'(?:',string,'|',array,'|',thingy,')')
     cmd = Re(r'^\s*(?:(',identifier,r')\s*:)?\s*(',identifier,r')\s*(,.*)?;\s*$')
     arg = Re(r',\s*(',identifier,r')\s*(:?=)\s*(',param,')')
 

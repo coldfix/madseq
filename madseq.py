@@ -140,7 +140,7 @@ class Value(object):
         return str(self.value)
 
     def fmtArg(self):
-        return self.assign + str(self.value)
+        return self.assign + str(self)
 
     @classmethod
     def parse(cls, text, assign='='):
@@ -150,7 +150,10 @@ class Value(object):
             try:
                 return parse_string(text)
             except ValueError:
-                return Symbolic.parse(text, assign)
+                try:
+                    return Array.parse(text, assign)
+                except ValueError:
+                    return Symbolic.parse(text, assign)
 
 
 def parse_number(text):
@@ -171,6 +174,26 @@ def parse_string(text):
         return regex.is_string.match(str(text)).groups()[0]
     except AttributeError:
         raise ValueError("Invalid string: %s" % (text,))
+
+
+class Array(Value):
+
+    @classmethod
+    def parse(cls, text, assign=False):
+        """Parse a MAD-X array."""
+        if text[0] != '{':
+            raise ValueError("Invalid array: %s" % (text,))
+        if text[-1] != '}':
+            raise Exception("Array not terminated correctly: %s" % (text,))
+        try:
+            return cls([Value.parse(field.strip(), assign)
+                        for field in text[1:-1].split(',')],
+                       assign)
+        except ValueError:
+            raise Exception("Array not well-formed: %s" % (text,))
+
+    def __str__(self):
+        return '{' + ','.join(map(str, self.value)) + '}'
 
 
 class Symbolic(Value):

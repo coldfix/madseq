@@ -3,11 +3,10 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-j|-y] [-s <slice>] [-m] [-o <output>] [<input>]
+    madseq.py [-j|-y] [-s <slice>] [-m] [<input>] [<output>]
     madseq.py (--help | --version)
 
 Options:
-    -o <output>, --output=<output>  Set output file
     -j, --json                      Use JSON as output format
     -y, --yaml                      Use YAML as output format
     -s <slice>, --slice=<slice>     Select slicing
@@ -754,8 +753,8 @@ def main(argv=None):
         from sys import stdin as input_file
 
     # open output stream
-    if args['--output'] and args['--output'] != '-':
-        output_file = open(args['--output'], 'wt')
+    if args['<output>'] and args['<output>'] != '-':
+        output_file = open(args['<output>'], 'wt')
     else:
         from sys import stdout as output_file
 

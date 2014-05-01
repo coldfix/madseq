@@ -37,7 +37,8 @@ setup(
         'docopt'
     ],
     extras_require={
-        'yaml': ['pyyaml']
+        'yaml': ['PyYAML'],
+        'slice': ['PyYAML']
     },
     test_suite='nose.collector',
     tests_require=['nose'],

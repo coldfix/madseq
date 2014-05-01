@@ -17,6 +17,8 @@ Options:
 """
 from __future__ import division
 
+__version__ = 'madseq 0.2'
+
 __all__ = [
     'Element', 'Sequence', 'File',
     'main'
@@ -716,7 +718,7 @@ class File(list):
 def main(argv=None):
     # parse command line options
     from docopt import docopt
-    args = docopt(__doc__, argv, version='madseq.py 0.1')
+    args = docopt(__doc__, argv, version=__version__)
 
     # prepare filters
     typecast = Typecast.multipole if args['--makethin'] else Typecast.preserve

@@ -567,32 +567,11 @@ class Slice(object):
 # json output
 #----------------------------------------
 
-def coeffs_quadrupole(elem):
-    return (getattr(elem, coeff)
-            for coeff in ('K1', 'K1S')
-            if isinstance(elem.get(coeff), Identifier))
-
-def get_variables(elem):
-    coeffs = dicti(quadrupole=coeffs_quadrupole)
-
-    if not (elem.type and elem.at and
-            elem.type in coeffs):
-        return []
-
-    return [('vary', [
-        odicti([
-            ('name', str(coeff)),
-            ('step', 1e-6)])
-        for coeff in coeffs.get(elem.type)(elem) ]
-    )]
-
-
 def json_adjust_element(elem):
     if not elem.type:
         return ()
     return odicti([('name', elem.name),
                    ('type', elem.type)] +
-                  get_variables(elem) +
                   [(k,v) for k,v in elem.args.items() if v is not None]),
 
 

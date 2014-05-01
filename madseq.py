@@ -600,6 +600,7 @@ def json_adjust_element(elem):
 #----------------------------------------
 
 class Yaml(object):
+
     def __init__(self):
         import yaml
         import pydicti
@@ -621,16 +622,22 @@ class Yaml(object):
         def _Decimal_representer(dumper, data):
             return dumper.represent_scalar(u'tag:yaml.org,2002:float',
                                            str(data).lower())
-
         Dumper.add_representer(self.dict, _dict_representer)
         Dumper.add_representer(stri.cls, _stri_representer)
         Dumper.add_representer(Symbolic, _Value_representer)
         Dumper.add_representer(Identifier, _Value_representer)
         Dumper.add_representer(Composed, _Value_representer)
         Dumper.add_representer(decimal.Decimal, _Decimal_representer)
-
         return yaml.dump(data, stream, Dumper,
                          default_flow_style=False, **kwds)
+
+    def load(self, stream, **kwds):
+        class OrderedLoader(Loader):
+            pass
+        OrderedLoader.add_constructor(
+            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+            lambda loader, node: self.dict(loader.construct_pairs(node)))
+        return yaml.load(stream, OrderedLoader)
 
 #----------------------------------------
 # main

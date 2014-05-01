@@ -3,13 +3,13 @@
 madseq - MAD-X sequence parser/transformer.
 
 Usage:
-    madseq.py [-j <json>] [-y <yaml>] [-s <slice>] [-m] [-o <output>] [<input>]
+    madseq.py [-j|-y] [-s <slice>] [-m] [-o <output>] [<input>]
     madseq.py (--help | --version)
 
 Options:
     -o <output>, --output=<output>  Set output file
-    -j <json>, --json=<json>        Set JSON output file
-    -y <yaml>, --yaml=<yaml>        Set YAML output file
+    -j, --json                      Use JSON as output format
+    -y, --yaml                      Use YAML as output format
     -s <slice>, --slice=<slice>     Select slicing
     -m, --makethin                  Apply a MAKETHIN like transformation
     -h, --help                      Show this help
@@ -386,12 +386,14 @@ class Text(str):
 
 class Sequence(object):
     """MadX sequence."""
-    def __init__(self, seq):
+    def __init__(self, seq, opt=None, name=None):
+        self.name = name
+        self.opt = opt
         self.seq = seq
 
     def __str__(self, code):
         """Format sequence to MadX format."""
-        return '%s\n'.join(self.seq)
+        return '\n'.join(map(str, (self.opt or []) + self.seq))
 
     @classmethod
     def detect(cls, elements):
@@ -643,7 +645,7 @@ class Yaml(object):
 # main
 #----------------------------------------
 
-def transform(elem, json_file=None, yaml_file=None,
+def transform(elem,
               typecast=Typecast.preserve,
               slicing=None):
     """Transform sequence."""
@@ -658,10 +660,6 @@ def transform(elem, json_file=None, yaml_file=None,
 
     # TODO: when to slice: explicit/always/never/{select classes}
 
-    # select optics routine
-    optics_file = first.pop('optics', 'inline')
-    if optics_file == 'inline':
-        optics_file = None
 
     # output method
     slice_method = getattr(Slice, first.pop('method', 'simple').lower())
@@ -690,30 +688,7 @@ def transform(elem, json_file=None, yaml_file=None,
         optics.insert(0, Text('! Optics definition for %s:' % first.get('name')))
         optics.append(Text())
 
-        if optics_file:
-            open(optics_file, 'wt').write(
-                '\n'.join(map(format_element, optics)))
-            optics = []
-
-    if json_file:
-        json.dump(
-            list(chain.from_iterable(map(json_adjust_element, elems))),
-            open(json_file, 'wt'),
-            indent=3,
-            separators=(',', ' : '),
-            cls=ValueEncoder)
-
-    if yaml_file:
-        yaml = Yaml()
-        yaml.dump(
-            list(chain.from_iterable(map(json_adjust_element, elems))),
-            open(yaml_file, 'wt'))
-
-    return (optics +
-            [Text('! Sequence definition for %s:' % first.name),
-             first] +
-            elems +
-            [last])
+    return Sequence([first] + elems + [last], optics, first.get('name'))
 
 class File(list):
 
@@ -768,30 +743,60 @@ def main(argv=None):
     # prepare filters
     typecast = Typecast.multipole if args['--makethin'] else Typecast.preserve
     transformation = partial(transform,
-                             json_file=args['--json'],
-                             yaml_file=args['--yaml'],
                              typecast=typecast,
                              slicing=args['--slice'])
 
     # perform input
-    if args['<input>']:
+    if args['<input>'] and args['<input>'] != '-':
         with open(args['<input>'], 'rt') as f:
             input_file = list(f)
     else:
         from sys import stdin as input_file
 
-    # parse data and apply transformations
-    original = Sequence.detect(File.parse(input_file))
-    processed = chain.from_iterable(map(transformation, original))
-    text = "\n".join(map(str, processed))
-
-    # perform output
-    if args['--output']:
-        with open(args['--output'], 'wt') as f:
-            f.write(text)
+    # open output stream
+    if args['--output'] and args['--output'] != '-':
+        output_file = open(args['--output'], 'wt')
     else:
-        from sys import stdout
-        stdout.write(text)
+        from sys import stdout as output_file
+
+    def load(file):
+        return Sequence.detect(File.parse(file))
+
+    def transform(input_data):
+        return (transformation(el)
+                for el in input_data)
+
+    def serialize(output_data):
+        return odicti(
+            (seq.name,
+             list(chain.from_iterable(map(json_adjust_element, seq.seq))))
+            for seq in output_data
+            if isinstance(seq, Sequence))
+
+    if args['--json']:
+        import json
+        def dump(output_data):
+            json.dump(
+                serialize(output_data),
+                output_file,
+                indent=3,
+                separators=(',', ' : '),
+                cls=ValueEncoder)
+
+    elif args['--yaml']:
+        yaml = Yaml()
+        def dump(output_data):
+            yaml.dump(
+                serialize(output_data),
+                output_file)
+
+    else:
+        def dump(output_data):
+            output_file.write("\n".join(map(str, output_data)))
+
+    # one line to do it all:
+    dump(transform(load(input_file)))
+
 main.__doc__ = __doc__
 
 if __name__ == '__main__':

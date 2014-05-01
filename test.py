@@ -13,7 +13,7 @@ class TestUtils(unittest.TestCase):
 
     def test_none_checked(self):
         tostr = madseq.none_checked(str)
-        self.assertIs(tostr(None), None)
+        self.assertEqual(tostr(None), None)
         self.assertEqual(tostr(1), '1')
 
     def test_stri(self):

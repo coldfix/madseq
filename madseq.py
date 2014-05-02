@@ -441,6 +441,7 @@ class ElementTransform(object):
 
         # whether to use separate optics
         if selector.get('use_optics', False):
+            # TODO: rename optic => template everywhere
             def make_optic(elem, elem_len, slice_num):
                 optic = elem.copy()
                 optic.L = elem_len / slice_num
@@ -543,17 +544,6 @@ def _adjust_element(elem):
                   [(k,v) for k,v in elem.args.items() if v is not None]),
 
 
-def _getstate(output_data):
-    return odicti(
-        (seq.name, odicti(
-            list(seq.seq[0].args.items()) +
-            [('elements', list(chain.from_iterable(map(_adjust_element,
-                                                       seq.seq[1:-1])))),]
-        ))
-        for seq in output_data
-        if isinstance(seq, Sequence))
-
-
 class Json(object):
 
     def __init__(self):
@@ -625,17 +615,24 @@ class Yaml(object):
             lambda loader, node: self.dict(loader.construct_pairs(node)))
         return yaml.load(stream, OrderedLoader)
 
+
 #----------------------------------------
 # main
 #----------------------------------------
 
-
 class Document(list):
+
+    def __init__(self, nodes):
+        self._nodes = list(nodes)
+        # TODO: lookup table for template elements
+
+    def transform(self, node_transform):
+        return Document(node_transform(node) for node in self._nodes)
 
     @classmethod
     def parse(cls, lines):
         """Parse sequence from line iteratable."""
-        return cls(list(chain.from_iterable(map(cls.parse_line, lines))))
+        return cls(Sequence.detect(chain.from_iterable(map(cls.parse_line, lines))))
 
     @classmethod
     def parse_line(cls, line):
@@ -660,6 +657,26 @@ class Document(list):
                 yield Text(command + ';')
         if len(commands) == 1 and not comment:
             yield Text('')
+
+    def _getstate(self, output_data):
+        return odicti(
+            (seq.name, odicti(
+                list(seq.seq[0].args.items()) +
+                [('elements', list(chain.from_iterable(map(_adjust_element,
+                                                           seq.seq[1:-1])))),]
+            ))
+            for seq in self._nodes
+            if isinstance(seq, Sequence))
+
+    def dump(self, stream, fmt='madx'):
+        if fmt == 'json':
+            Json().dump(self._getstate(), stream)
+        elif fmt == 'yaml':
+            Yaml().dump(self._getstate(), stream)
+        elif fmt == 'madx':
+            stream.write("\n".join(map(str, self._nodes)))
+        else:
+            raise ValueError("Invalid format code: {!r}".format(fmt))
 
 
 def main(argv=None):
@@ -689,28 +706,16 @@ def main(argv=None):
         transforms_doc = []
     node_transform = SequenceTransform(transforms_doc)
 
-    def load(file):
-        return Sequence.detect(Document.parse(file))
-
-    def edit(input_data):
-        return (node_transform(el) for el in input_data)
-
+    # output format
     if args['--json']:
-        json = Json()
-        def dump(output_data):
-            json.dump(_getstate(output_data), output_file)
-
+        fmt = 'json'
     elif args['--yaml']:
-        yaml = Yaml()
-        def dump(output_data):
-            yaml.dump(_getstate(output_data), output_file)
-
+        fmt = 'yaml'
     else:
-        def dump(output_data):
-            output_file.write("\n".join(map(str, output_data)))
+        fmt = 'madx'
 
     # one line to do it all:
-    dump(edit(load(input_file)))
+    Document.parse(input_file).transform(node_transform).dump(output_file, fmt)
 main.__doc__ = __doc__
 
 if __name__ == '__main__':

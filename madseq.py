@@ -361,11 +361,55 @@ class Sequence(object):
 # Transformations
 #----------------------------------------
 
-def exclusive(mapping, *keys):
-    return sum(key in mapping for key in keys) <= 1
+
+class SequenceTransform(object):
+
+    """Transform sequence."""
+
+    offsets = dicti(entry=0, centre=Decimal(0.5), exit=1)
+
+    def __init__(self, slicing):
+        # create slicer
+        self.transforms = [ElementTransform(s) for s in slicing] + []
+        self.transforms.append(ElementTransform({}))
+
+    def __call__(self, node):
+
+        if not isinstance(node, Sequence):
+            return node
+        seq = node
+        first = seq.seq[0]
+        last = seq.seq[-1]
+
+        refer = self.offsets[str(first.get('refer', 'centre'))]
+
+        def transform(elem, offset):
+            for t in self.transforms:
+                if t.match(elem):
+                    return t.replace(elem, offset, refer)
+
+        templates = []      # predefined element templates
+        elements = []       # actual elements to put in sequence
+        position = 0        # current element position
+
+        for elem in seq.seq[1:-1]:
+            if elem.type:
+                optic, elem, elem_len = transform(elem, position)
+                templates += optic
+                elements += elem
+                position += elem_len
+            else:
+                elements.append(elem)
+        first.L = position
+
+        if templates:
+            templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
+            templates.append(Text())
+
+        return Sequence([first] + elements + [last], templates, first.name)
 
 
-class Transform(object):
+class ElementTransform(object):
 
     def __init__(self, selector):
 
@@ -483,6 +527,10 @@ def rescale_makethin(elem, ratio):
     return elem
 
 
+def exclusive(mapping, *keys):
+    return sum(key in mapping for key in keys) <= 1
+
+
 #----------------------------------------
 # JSON/YAML serialization
 #----------------------------------------
@@ -581,48 +629,6 @@ class Yaml(object):
 # main
 #----------------------------------------
 
-def transform(elem, slicing):
-
-    """Transform sequence."""
-
-    if not isinstance(elem, Sequence):
-        return elem
-    seq = elem
-    first = seq.seq[0]
-    last = seq.seq[-1]
-
-    offsets = dicti(entry=0, centre=Decimal(0.5), exit=1)
-    refer = offsets[str(first.get('refer', 'centre'))]
-
-    # create slicer
-    transforms = [Transform(s) for s in slicing] + []
-    transforms.append(Transform({}))
-
-    def transform(elem, offset):
-        for t in transforms:
-            if t.match(elem):
-                return t.replace(elem, offset, refer)
-
-    templates = []      # predefined element templates
-    elements = []       # actual elements to put in sequence
-    position = 0        # current element position
-
-    for elem in seq.seq[1:-1]:
-        if elem.type:
-            optic, elem, elem_len = transform(elem, position)
-            templates += optic
-            elements += elem
-            position += elem_len
-        else:
-            elements.append(elem)
-    first.L = position
-
-    if templates:
-        templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
-        templates.append(Text())
-
-    return Sequence([first] + elements + [last], templates, first.name)
-
 
 class Document(list):
 
@@ -681,13 +687,13 @@ def main(argv=None):
             transforms_doc = Yaml().load(f)
     else:
         transforms_doc = []
+    node_transform = SequenceTransform(transforms_doc)
 
     def load(file):
         return Sequence.detect(Document.parse(file))
 
     def edit(input_data):
-        return (transform(el, slicing=transforms_doc)
-                for el in input_data)
+        return (node_transform(el) for el in input_data)
 
     if args['--json']:
         json = Json()

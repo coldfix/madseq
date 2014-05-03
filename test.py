@@ -165,11 +165,12 @@ class TestElement(unittest.TestCase):
 class TestElementTransform(unittest.TestCase):
 
     def test_replace_with_parent(self):
-        base = madseq.Element('BASE', 'DRIFT', dicti(l=1.5, k=2))
+        init_l = Decimal('1.5')
+        base = madseq.Element('BASE', 'DRIFT', dicti(l=init_l, k=2))
         elem = madseq.Element(None, 'BASE', dicti(), base)
         transformer = madseq.ElementTransform({})
-        tpl, el, l = transformer.replace(elem, 0, 0)
-        self.assertEqual(l, 1.5)
+        tpl, el, l = transformer.slice(elem, 0, 0)
+        self.assertEqual(l, init_l)
 
 
 class TestMakethin(unittest.TestCase):

@@ -155,7 +155,7 @@ def format_argument(key, value):
 def format_value(value):
     """Format value for MAD-X output."""
     try:
-        return value.value
+        return value.expr
     except AttributeError:
         if isinstance(value, Decimal):
             return str(value.normalize())
@@ -177,7 +177,7 @@ def format_safe(value):
     same as :func:`format_value`.
     """
     try:
-        return value.safe_value
+        return value.safe_expr
     except AttributeError:
         return format_value(value)
 
@@ -188,32 +188,32 @@ class Value(object):
     Base class for some types parsed from MAD-X input parameters.
 
     :ivar value: Actual value. Type depends on the concrete derived class.
-    :ivar str assign: Assignment symbol, either ':=' or '='
+    :ivar str _assign: Assignment symbol, either ':=' or '='
     """
 
     def __init__(self, value, assign='='):
         """Initialize value."""
-        self._value = value
+        self.value = value
         self._assign = assign
 
     @property
     def argument(self):
         """Format for MAD-X output including assignment symbol"""
-        return self._assign + self.value
+        return self._assign + self.expr
 
     @property
-    def value(self):
+    def expr(self):
         """Get value as string."""
-        return str(self._value)
+        return str(self.value)
 
     @property
-    def safe_value(self):
+    def safe_expr(self):
         """Get string that can safely occur inside an arithmetic expression."""
-        return self.value
+        return self.expr
 
     def __str__(self):
         """Return formatted value."""
-        return self.value
+        return self.expr
 
     @classmethod
     def parse(cls, text, assign='='):
@@ -272,8 +272,8 @@ class Array(Value):
             raise Exception("Ill-formed ARRAY: {!r}".format(text))
 
     @property
-    def value(self):
-        return '{' + ','.join(map(str, self._value)) + '}'
+    def expr(self):
+        return '{' + ','.join(map(str, self.value)) + '}'
 
 
 class Symbolic(Value):
@@ -281,7 +281,7 @@ class Symbolic(Value):
     """Base class for identifiers and composed arithmetic expressions."""
 
     @classmethod
-    def parse(cls, text, assign=False):
+    def parse(cls, text, assign='='):
         """Parse either a :class:`Identifier` or a :class:`Composed`."""
         try:
             return Identifier.parse(text, assign)
@@ -334,14 +334,16 @@ class Composed(Symbolic):
     @classmethod
     def create(cls, a, x, b):
         """Create a composed expression from two other expressions."""
+        delayed = (getattr(a, 'assign', '=') == ':=' or
+                   getattr(b, 'assign', '=') == ':=')
         return Composed(
             ' '.join((format_safe(a), x, format_safe(b))),
-            getattr(a, 'assign', False) or getattr(b, 'assign', False))
+            ':=' if delayed else '=')
 
     @property
-    def safe_value(self):
+    def safe_expr(self):
         """Add braces for use inside another expression."""
-        return '(' + self.value + ')'
+        return '(' + self.expr + ')'
 
 
 def parse_args(text):
@@ -400,6 +402,23 @@ class Element(object):
         """Get a serializeable state for :class:`Json` and :class:`Yaml`."""
         return odicti([('name', self.name),
                        ('type', self.type)] + list(self.args.items()))
+
+    @property
+    def base_type(self):
+        """Return the base type name."""
+        if self._base:
+            return self._base.base_type
+        return self.type
+
+    @property
+    def all_args(self):
+        """Return merged arguments of self and bases."""
+        if self._base:
+            args = self._base.all_args
+        else:
+            args = odicti()
+        args.update(self.args)
+        return args
 
     # MutableMapping interface:
 
@@ -572,7 +591,7 @@ class SequenceTransform(object):
                 elem._base = defs.get(elem.type)
             for t in self._transforms:
                 if t.match(elem):
-                    return t.replace(elem, offset, refer)
+                    return t.slice(elem, offset, refer)
 
         templates = []      # predefined element templates
         elements = []       # actual elements to put in sequence
@@ -580,8 +599,8 @@ class SequenceTransform(object):
 
         for elem in body:
             if elem.type:
-                optic, elem, elem_len = transform(elem, position)
-                templates += optic
+                templ, elem, elem_len = transform(elem, position)
+                templates += templ
                 elements += elem
                 position += elem_len
             else:
@@ -603,7 +622,7 @@ class ElementTransform(object):
     :ivar function match:
     :ivar function _get_slice_num:
     :ivar function _rescale:
-    :ivar function _makeoptic:
+    :ivar function _maketempl:
     :ivar function _stripelem:
     :ivar function _distribution:
     """
@@ -623,7 +642,7 @@ class ElementTransform(object):
             self.match = lambda elem: elem.name == name
         elif 'type' in selector:
             type = selector['type']
-            self.match = lambda elem: elem.type == type
+            self.match = lambda elem: elem.base_type == type
         else:
             self.match = lambda elem: True
 
@@ -643,16 +662,11 @@ class ElementTransform(object):
             self._rescale = rescale_thick
 
         # whether to use separate optics
-        if selector.get('use_optics', False):
-            # TODO: rename optic => template everywhere
-            def make_optic(elem, elem_len, slice_num):
-                optic = elem.copy()
-                optic['L'] = elem_len / slice_num
-                return [optic]
-            self._makeoptic = make_optic
-            self._stripelem = lambda elem: Element(None, elem.name, {}, self)
+        if selector.get('template', False):
+            self._maketempl = lambda elem: [elem]
+            self._stripelem = lambda elem: Element(None, elem.name, {}, elem)
         else:
-            self._makeoptic = lambda elem, slice_num: []
+            self._maketempl = lambda elem: []
             self._stripelem = lambda elem: elem
 
         # slice distribution style over element length
@@ -664,7 +678,7 @@ class ElementTransform(object):
         else:
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
-    def replace(self, elem, offset, refer):
+    def slice(self, elem, offset, refer):
         """
         Transform the element at ``offset.
 
@@ -676,45 +690,44 @@ class ElementTransform(object):
         """
         elem_len = elem.get('L', 0)
         slice_num = self._get_slice_num(elem_len) or 1
-        optic = self._makeoptic(elem, slice_num)
-        elem = self._stripelem(elem)
-        elems = self._distribution(elem, offset, refer, elem_len, slice_num)
-        return optic, elems, elem_len
+        slice_len = Decimal(elem_len) / slice_num
+        scaled = self._rescale(elem, 1/Decimal(slice_num))
+        templ = self._maketempl(scaled)
+        elem = self._stripelem(scaled)
+        elems = self._distribution(elem, offset, refer, slice_num, slice_len)
+        return templ, elems, elem_len
 
-    def uniform_slice_distribution(self, elem, offset, refer, elem_len, slice_num):
+    def uniform_slice_distribution(self, elem, offset, refer, slice_num, slice_len):
         """
         Slice an element uniformly into short pieces.
 
         :param Element elem:
         :param Decimal offset: element entry position
         :param Decimal refer: sequence addressing style
-        :param Element elem_len: element length
+        :param Decimal slice_len: element length
         :param int slice_num: number of slices
         :returns: element slices
         :rtype: generator
         """
-        slice_len = Decimal(elem_len) / slice_num
-        scaled = self._rescale(elem, 1/Decimal(slice_num))
         for slice_idx in range(slice_num):
-            slice = scaled.copy()
+            slice = elem.copy()
             slice['at'] = offset + (slice_idx + refer)*slice_len
             yield slice
 
-    def uniform_slice_loop(self, elem, offset, refer, elem_len, slice_num):
+    def uniform_slice_loop(self, elem, offset, refer, slice_num, slice_len):
         """
         Slice an element uniformly into short pieces using a loop construct.
 
         :param Element elem:
         :param Decimal offset: element entry position
         :param Decimal refer: sequence addressing style
-        :param Element elem_len: element length
+        :param Decimal slice_len: element length
         :param int slice_num: number of slices
         :returns: element slices
         :rtype: generator
         """
-        slice_len = elem_len / slice_num
-        slice = self._rescale(elem, 1/Decimal(slice_num)).copy()
-        slice['at'] = offset + (Identifier('i', True) + refer) * slice_len
+        slice = elem.copy()
+        slice['at'] = offset + (Identifier('i') + refer) * slice_len
         yield Text('i = 0;')
         yield Text('while (i < %s) {' % slice_num)
         yield slice
@@ -728,7 +741,7 @@ def rescale_thick(elem, ratio):
         return elem
     scaled = elem.copy()
     scaled['L'] = elem['L'] * ratio
-    if scaled.type == 'sbend':
+    if scaled.base_type == 'sbend':
         scaled['angle'] = scaled['angle'] * ratio
     return scaled
 
@@ -740,23 +753,23 @@ def rescale_makethin(elem, ratio):
     NOTE: rescale_makethin is currently not recommended!  If you use it,
     you have to make sure, your slice length will be sufficiently small!
     """
-    if elem.type not in ('sbend', 'quadrupole', 'solenoid'):
+    base_type = elem.base_type
+    if base_type not in ('sbend', 'quadrupole', 'solenoid'):
         return elem
-    elem = elem.copy()
-    if elem.type == 'sbend':
-        elem['KNL'] = [elem['angle'] * ratio]
-        del elem['angle']
-        del elem['HGAP']
-    elif elem.type == 'quadrupole':
-        elem['KNL'] = [0, elem['K1'] * elem['L']]
-        del elem['K1']
-    elif elem.type == 'solenoid':
+    if base_type == 'solenoid':
+        elem = elem.copy()
         elem['ksi'] = elem['KS'] * ratio
         elem['lrad'] = elem['L'] * ratio
         elem['L'] = 0
-        return
-    # set elem_class to multipole
-    elem.type = stri('multipole')
+        return elem
+    elem = Element(elem.name, 'multipole', elem.all_args)
+    if base_type == 'sbend':
+        elem['KNL'] = [elem['angle'] * ratio]
+        del elem['angle']
+        del elem['HGAP']
+    elif base_type == 'quadrupole':
+        elem['KNL'] = [0, elem['K1'] * elem['L']]
+        del elem['K1']
     # replace L by LRAD property
     elem['lrad'] = elem.pop('L', None)
     return elem
@@ -811,9 +824,7 @@ class Yaml(object):
     def __init__(self):
         """Import yaml module for later use."""
         import yaml
-        import pydicti
         self.yaml = yaml
-        self.dict = pydicti.odicti
 
     def dump(self, data, stream=None):
         """Dump data with types defined in this module."""
@@ -831,7 +842,7 @@ class Yaml(object):
         def _Decimal_representer(dumper, data):
             return dumper.represent_scalar(u'tag:yaml.org,2002:float',
                                            str(data).lower())
-        Dumper.add_representer(self.dict, _dict_representer)
+        Dumper.add_representer(odicti, _dict_representer)
         Dumper.add_representer(stri.cls, _stri_representer)
         Dumper.add_representer(Symbolic, _Value_representer)
         Dumper.add_representer(Identifier, _Value_representer)
@@ -847,7 +858,7 @@ class Yaml(object):
             pass
         OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            lambda loader, node: self.dict(loader.construct_pairs(node)))
+            lambda loader, node: odicti(loader.construct_pairs(node)))
         return yaml.load(stream, OrderedLoader)
 
 

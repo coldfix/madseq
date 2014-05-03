@@ -8,6 +8,12 @@ Changelog
 - fix bugged Element.copy and .__contains__ regarding to base elements
 - fix JSON/YAML serialization errors
 - fix bugged implementation for predefined elements
+- fix bugged LOOP style
+- fix bugged makethin
+- fix bugged use_optics
+- rename 'use_optics' => 'template'. technically, this is a change in the
+  public interface, but  we are still in 0.X and furthermore the feature was
+  not working before anyway.
 
 
 0.3.1

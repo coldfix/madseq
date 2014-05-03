@@ -63,7 +63,7 @@ entry is a dictionary with the following groups of mutually exclusive keys::
 
     bool makethin: whether to convert the slices  to MULTIPOLE
 
-    bool use_optics: whether to put a template for the element in front
+    bool template: whether to put a template for the element in front
 
     str style: slicing style, either 'uniform' or 'loop', defaults to 'uniform'
 

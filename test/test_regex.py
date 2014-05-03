@@ -1,0 +1,84 @@
+# test utilities
+import unittest
+
+# tested module
+import madseq
+
+
+class Test_regex(unittest.TestCase):
+
+    """Test the functionality of the madseq.regex parsing expressions."""
+
+    def setUp(self):
+        name = self._testMethodName.split('_', 1)[1]
+        reg = str(getattr(madseq.regex, name)).lstrip('^').rstrip('$')
+        self.r = madseq.Re('^', reg , '$')
+
+    def test_number(self):
+        self.assertTrue(self.r.match('23'))
+        self.assertTrue(self.r.match('23.0'))
+        self.assertTrue(self.r.match('-1e+1'))
+        self.assertTrue(self.r.match('+2e-3'))
+        self.assertFalse(self.r.match(''))
+        self.assertFalse(self.r.match('e.'))
+        self.assertFalse(self.r.match('.e'))
+
+    def test_thingy(self):
+        self.assertTrue(self.r.match('unseparated'))
+        self.assertTrue(self.r.match('23'))
+        self.assertTrue(self.r.match('23.0'))
+        self.assertTrue(self.r.match('-1e+1'))
+        self.assertTrue(self.r.match('+2e-3'))
+        self.assertFalse(self.r.match('e;'))
+        self.assertFalse(self.r.match('e,'))
+        self.assertFalse(self.r.match(' e'))
+        self.assertFalse(self.r.match('e!'))
+        self.assertTrue(self.r.match('"a.1"'))
+
+    def test_identifier(self):
+        self.assertTrue(self.r.match('a'))
+        self.assertTrue(self.r.match('a1'))
+        self.assertTrue(self.r.match('a.1'))
+        self.assertFalse(self.r.match(''))
+        self.assertFalse(self.r.match('1a'))
+
+    def test_string(self):
+        self.assertTrue(self.r.match('"hello world"'))
+        self.assertTrue(self.r.match('"hello !,; world"'))
+        self.assertFalse(self.r.match('"foo" bar"'))
+        self.assertFalse(self.r.match('foo" bar"'))
+        self.assertFalse(self.r.match(''))
+
+    def test_param(self):
+        self.assertTrue(self.r.match('unseparated'))
+        self.assertTrue(self.r.match('23'))
+        self.assertTrue(self.r.match('23.0'))
+        self.assertTrue(self.r.match('-1e+1'))
+        self.assertTrue(self.r.match('+2e-3'))
+        self.assertTrue(self.r.match('"hello world"'))
+        self.assertFalse(self.r.match('"foo" bar"'))
+        self.assertFalse(self.r.match('foo" bar"'))
+        self.assertFalse(self.r.match(''))
+        self.assertFalse(self.r.match('e;'))
+        self.assertFalse(self.r.match('e,'))
+        self.assertFalse(self.r.match(' e'))
+        self.assertFalse(self.r.match('e!'))
+
+    def test_cmd(self):
+        pass
+
+    def test_arg(self):
+        pass
+
+    def test_comment_split(self):
+        pass
+
+    def test_is_string(self):
+        pass
+
+    def test_is_identifier(self):
+        pass
+
+
+if __name__ == '__main__':
+    unittest.main()

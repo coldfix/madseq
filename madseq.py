@@ -607,7 +607,7 @@ class SequenceTransform(object):
         head['L'] = position
 
         if templates:
-            templates.insert(0, Text('! Template elements for %s:' % head.get('name')))
+            templates.insert(0, Text('! Template elements for %s:' % head.name))
             templates.append(Text())
 
         return Sequence([head] + elements + [tail], templates)
@@ -724,6 +724,8 @@ class ElementTransform(object):
         for slice_idx in range(slice_num):
             slice = elem.copy()
             slice['at'] = offset + (slice_idx + refer)*slice_len
+            if slice_num > 1:
+                slice.name = elem.name + '..' + str(slice_idx)
             yield slice
 
     def uniform_slice_loop(self, elem, offset, refer, slice_num, slice_len):
@@ -739,6 +741,7 @@ class ElementTransform(object):
         :rtype: generator
         """
         slice = elem.copy()
+        slice.name = None
         slice['at'] = offset + (Identifier('i') + refer) * slice_len
         yield Text('i = 0;')
         yield Text('while (i < %s) {' % slice_num)

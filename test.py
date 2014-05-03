@@ -168,7 +168,7 @@ class TestElementTransform(unittest.TestCase):
         base = madseq.Element('BASE', 'DRIFT', dicti(l=1.5, k=2))
         elem = madseq.Element(None, 'BASE', dicti(), base)
         transformer = madseq.ElementTransform({})
-        tpl, el, l = transformer.replace(elem, 0, 0)
+        tpl, el, l = transformer.slice(elem, 0, 0)
         self.assertEqual(l, 1.5)
 
 

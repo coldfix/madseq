@@ -591,7 +591,7 @@ class SequenceTransform(object):
                 elem._base = defs.get(elem.type)
             for t in self._transforms:
                 if t.match(elem):
-                    return t.replace(elem, offset, refer)
+                    return t.slice(elem, offset, refer)
 
         templates = []      # predefined element templates
         elements = []       # actual elements to put in sequence
@@ -664,14 +664,10 @@ class ElementTransform(object):
         # whether to use separate optics
         if selector.get('use_optics', False):
             # TODO: rename optic => template everywhere
-            def make_optic(elem, elem_len, slice_num):
-                optic = elem.copy()
-                optic['L'] = elem_len / slice_num
-                return [optic]
-            self._makeoptic = make_optic
-            self._stripelem = lambda elem: Element(None, elem.name, {}, self)
+            self._makeoptic = lambda elem: [elem]
+            self._stripelem = lambda elem: Element(None, elem.name, {}, elem)
         else:
-            self._makeoptic = lambda elem, slice_num: []
+            self._makeoptic = lambda elem: []
             self._stripelem = lambda elem: elem
 
         # slice distribution style over element length
@@ -683,7 +679,7 @@ class ElementTransform(object):
         else:
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
-    def replace(self, elem, offset, refer):
+    def slice(self, elem, offset, refer):
         """
         Transform the element at ``offset.
 
@@ -695,44 +691,43 @@ class ElementTransform(object):
         """
         elem_len = elem.get('L', 0)
         slice_num = self._get_slice_num(elem_len) or 1
-        optic = self._makeoptic(elem, slice_num)
-        elem = self._stripelem(elem)
-        elems = self._distribution(elem, offset, refer, elem_len, slice_num)
-        return optic, elems, elem_len
+        slice_len = Decimal(elem_len) / slice_num
+        scaled = self._rescale(elem, 1/Decimal(slice_num))
+        optics = self._makeoptic(scaled)
+        elem = self._stripelem(scaled)
+        elems = self._distribution(elem, offset, refer, slice_num, slice_len)
+        return optics, elems, elem_len
 
-    def uniform_slice_distribution(self, elem, offset, refer, elem_len, slice_num):
+    def uniform_slice_distribution(self, elem, offset, refer, slice_num, slice_len):
         """
         Slice an element uniformly into short pieces.
 
         :param Element elem:
         :param Decimal offset: element entry position
         :param Decimal refer: sequence addressing style
-        :param Element elem_len: element length
+        :param Decimal slice_len: element length
         :param int slice_num: number of slices
         :returns: element slices
         :rtype: generator
         """
-        slice_len = Decimal(elem_len) / slice_num
-        scaled = self._rescale(elem, 1/Decimal(slice_num))
         for slice_idx in range(slice_num):
-            slice = scaled.copy()
+            slice = elem.copy()
             slice['at'] = offset + (slice_idx + refer)*slice_len
             yield slice
 
-    def uniform_slice_loop(self, elem, offset, refer, elem_len, slice_num):
+    def uniform_slice_loop(self, elem, offset, refer, slice_num, slice_len):
         """
         Slice an element uniformly into short pieces using a loop construct.
 
         :param Element elem:
         :param Decimal offset: element entry position
         :param Decimal refer: sequence addressing style
-        :param Element elem_len: element length
+        :param Decimal slice_len: element length
         :param int slice_num: number of slices
         :returns: element slices
         :rtype: generator
         """
-        slice_len = elem_len / slice_num
-        slice = self._rescale(elem, 1/Decimal(slice_num)).copy()
+        slice = elem.copy()
         slice['at'] = offset + (Identifier('i') + refer) * slice_len
         yield Text('i = 0;')
         yield Text('while (i < %s) {' % slice_num)

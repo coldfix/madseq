@@ -29,6 +29,8 @@ class TestUtils(unittest.TestCase):
         Re = madseq.Re
         r1 = Re('hello')
         r2 = Re(r1, 'world')
+        self.assertEqual(str(r1), 'hello')
+        self.assertEqual(str(r2), 'helloworld')
         self.assertTrue(r1.search(' helloworld '))
         self.assertFalse(r1.search('yelloworld'))
         self.assertTrue(r2.match('helloworld anything'))
@@ -63,10 +65,10 @@ class test_Parse(unittest.TestCase):
         f = madseq.parse_number('12.')
         s = madseq.Symbolic.parse('pi')
 
-        self.assertEqual(str(f + s), "12 + pi")
-        self.assertEqual(str(s - f), "pi - 12")
-        self.assertEqual(str(i + f * s), "-13 + (12 * pi)")
-        self.assertEqual(str(s / s), "pi / pi")
+        self.assertEqual((f + s).value, "12 + pi")
+        self.assertEqual((s - f).value, "pi - 12")
+        self.assertEqual((i + f * s).value, "-13 + (12 * pi)")
+        self.assertEqual((s / s).value, "pi / pi")
 
 
 
@@ -147,17 +149,17 @@ class TestElement(unittest.TestCase):
         mad = "name: type, a=97, b=98, c=99, d=100, e=101;"
         el = madseq.Element.parse(mad)
         self.assertEqual(str(mad), mad)
-        self.assertEqual(el.c, 99)
-        self.assertEqual(el.E, 101)
+        self.assertEqual(el['c'], 99)
+        self.assertEqual(el['E'], 101)
 
     def test_deep_lookup(self):
         el0 = madseq.Element(None, None, dicti(a='a0', b='b0', c='c0'))
         el1 = madseq.Element(None, None, dicti(a='a1', b='b1', d='d1'), el0)
         el2 = madseq.Element(None, None, dicti(a='a2'), el1)
-        self.assertEqual(el2.a, 'a2')
-        self.assertEqual(el2.b, 'b1')
-        self.assertEqual(el2.c, 'c0')
-        self.assertEqual(el2.d, 'd1')
+        self.assertEqual(el2['a'], 'a2')
+        self.assertEqual(el2['b'], 'b1')
+        self.assertEqual(el2['c'], 'c0')
+        self.assertEqual(el2['d'], 'd1')
 
 
 class TestElementTransform(unittest.TestCase):
@@ -176,7 +178,7 @@ class TestMakethin(unittest.TestCase):
         sbend = madseq.Element(None,
                                'SBEND', dicti(angle=3.14, hgap=1, L=3.5))
         scaled = madseq.rescale_makethin(sbend, 0.5)
-        self.assertEqual(scaled.KNL, [1.57])
+        self.assertEqual(scaled['KNL'], [1.57])
         self.assertEqual(scaled.get('angle'), None)
         self.assertEqual(scaled.get('hgap'), None)
         self.assertEqual(scaled.type, 'multipole')
@@ -184,7 +186,7 @@ class TestMakethin(unittest.TestCase):
     def test_rescale_makethin_quadrupole(self):
         quad = madseq.Element(None, 'QUADRUPOLE', dicti(K1=3, L=2.5))
         scaled = madseq.rescale_makethin(quad, 0.5)
-        self.assertEqual(scaled.KNL, [0, 7.5])
+        self.assertEqual(scaled['KNL'], [0, 7.5])
         self.assertEqual(scaled.get('K1'), None)
         self.assertEqual(scaled.type, 'multipole')
 
@@ -192,7 +194,7 @@ class TestMakethin(unittest.TestCase):
         pi = 3.14
         el = madseq.Element(None, 'SBEND', {'angle': pi, 'L': 1})
         scaled = madseq.rescale_thick(el, 0.5)
-        self.assertEqual(scaled.angle, pi/2)
+        self.assertEqual(scaled['angle'], pi/2)
         self.assertEqual(scaled.type, 'SBEND')
 
 

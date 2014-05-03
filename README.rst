@@ -36,15 +36,15 @@ Usage
 The command should be called as follows::
 
     Usage:
-        madseq.py [-j <json>] [-o <output>] [<input>]
+        madseq.py [-j|-y] [-s <slice>] [<input>] [<output>]
         madseq.py (--help | --version)
 
     Options:
-        -o <output>, --output=<output>  Set output file
-        -j <json>, --json=<json>        Set JSON output file
+        -j, --json                      Use JSON as output format
+        -y, --yaml                      Use YAML as output format
+        -s <slice>, --slice=<slice>     Set slicing definition file
         -h, --help                      Show this help
         -v, --version                   Show version information
-        python -m madseq <infile.madx >outfile.madx
 
 If ``<input>`` is not specified the standard input stream will be used to
 read the input file. Respectively, the standard output stream will be used

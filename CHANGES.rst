@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+0.4.1
+=====
+
+- use different names for slices
+- fix sequence name in comment before templates
+
+
 0.4.0
 =====
 

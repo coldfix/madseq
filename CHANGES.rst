@@ -6,6 +6,7 @@ Changelog
 
 - internal: remove attribute access for Element properties
 - fix bugged Element.copy and .__contains__ regarding to base elements
+- fix JSON/YAML serialization errors
 
 
 0.3.1

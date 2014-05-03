@@ -570,6 +570,7 @@ class Json(object):
         self.json = json
 
     def dump(self, data, stream):
+        json = self.json
 
         class fakefloat(float):
             """Used to serialize Decimal.
@@ -588,10 +589,10 @@ class Json(object):
                 # Let the base class default method raise the TypeError
                 return json.JSONEncoder.default(self, obj)
 
-        self.json.dump(data, stream,
-                       indent=2,
-                       separators=(',', ' : '),
-                       cls=ValueEncoder)
+        json.dump(data, stream,
+                  indent=2,
+                  separators=(',', ' : '),
+                  cls=ValueEncoder)
 
 
 class Yaml(object):
@@ -622,6 +623,7 @@ class Yaml(object):
         Dumper.add_representer(Symbolic, _Value_representer)
         Dumper.add_representer(Identifier, _Value_representer)
         Dumper.add_representer(Composed, _Value_representer)
+        Dumper.add_representer(Array, _Value_representer)
         Dumper.add_representer(Decimal, _Decimal_representer)
         return yaml.dump(data, stream, Dumper, default_flow_style=False)
 
@@ -678,7 +680,7 @@ class Document(list):
         if len(commands) == 1 and not comment:
             yield Text('')
 
-    def _getstate(self, output_data):
+    def _getstate(self):
         return odicti(
             (seq.name, odicti(
                 list(seq.seq[0].args.items()) +

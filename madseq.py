@@ -155,7 +155,7 @@ def format_argument(key, value):
 def format_value(value):
     """Format value for MAD-X output."""
     try:
-        return value.value
+        return value.expr
     except AttributeError:
         if isinstance(value, Decimal):
             return str(value.normalize())
@@ -177,7 +177,7 @@ def format_safe(value):
     same as :func:`format_value`.
     """
     try:
-        return value.safe_value
+        return value.safe_expr
     except AttributeError:
         return format_value(value)
 
@@ -188,32 +188,32 @@ class Value(object):
     Base class for some types parsed from MAD-X input parameters.
 
     :ivar value: Actual value. Type depends on the concrete derived class.
-    :ivar str assign: Assignment symbol, either ':=' or '='
+    :ivar str _assign: Assignment symbol, either ':=' or '='
     """
 
     def __init__(self, value, assign='='):
         """Initialize value."""
-        self._value = value
+        self.value = value
         self._assign = assign
 
     @property
     def argument(self):
         """Format for MAD-X output including assignment symbol"""
-        return self._assign + self.value
+        return self._assign + self.expr
 
     @property
-    def value(self):
+    def expr(self):
         """Get value as string."""
-        return str(self._value)
+        return str(self.value)
 
     @property
-    def safe_value(self):
+    def safe_expr(self):
         """Get string that can safely occur inside an arithmetic expression."""
-        return self.value
+        return self.expr
 
     def __str__(self):
         """Return formatted value."""
-        return self.value
+        return self.expr
 
     @classmethod
     def parse(cls, text, assign='='):
@@ -272,8 +272,8 @@ class Array(Value):
             raise Exception("Ill-formed ARRAY: {!r}".format(text))
 
     @property
-    def value(self):
-        return '{' + ','.join(map(str, self._value)) + '}'
+    def expr(self):
+        return '{' + ','.join(map(str, self.value)) + '}'
 
 
 class Symbolic(Value):
@@ -339,9 +339,9 @@ class Composed(Symbolic):
             getattr(a, 'assign', False) or getattr(b, 'assign', False))
 
     @property
-    def safe_value(self):
+    def safe_expr(self):
         """Add braces for use inside another expression."""
-        return '(' + self.value + ')'
+        return '(' + self.expr + ')'
 
 
 def parse_args(text):

@@ -266,7 +266,7 @@ class Element(object):
     Single MAD-X element.
     """
 
-    __slots__ = ['name', 'type', 'args']
+    __slots__ = ['name', 'type', 'args', '_base']
 
     def __init__(self, name, type, args, base=None):
         """
@@ -290,20 +290,8 @@ class Element(object):
     def copy(self):
         return self.__class__(self.name, self.type, self.args.copy())
 
-    def __getattr__(self, key):
-        return self[key]
-
-    def __setattr__(self, key, val):
-        if key in self.__slots__:
-            self.__class__.__dict__[key].__set__(self, val)
-        else:
-            self.args[key] = val
-
     def __contains__(self, key):
         return key in self.args
-
-    def __delattr__(self, key):
-        del self.args[key]
 
     def __getitem__(self, key):
         try:
@@ -312,6 +300,12 @@ class Element(object):
             if self._base:
                 return self._base[key]
             raise
+
+    def __setitem__(self, key, val):
+        self.args[key] = val
+
+    def __delitem__(self, key):
+        del self.args[key]
 
     def get(self, key, default=None):
         try:
@@ -424,7 +418,7 @@ class SequenceTransform(object):
                 position += elem_len
             else:
                 elements.append(elem)
-        first.L = position
+        first['L'] = position
 
         if templates:
             templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
@@ -468,7 +462,7 @@ class ElementTransform(object):
             # TODO: rename optic => template everywhere
             def make_optic(elem, elem_len, slice_num):
                 optic = elem.copy()
-                optic.L = elem_len / slice_num
+                optic['L'] = elem_len / slice_num
                 return [optic]
             self._makeoptic = make_optic
             self._stripelem = lambda elem: Element(None, elem.name, {})
@@ -498,13 +492,13 @@ class ElementTransform(object):
         scaled = self._rescale(elem, 1/Decimal(slice_num))
         for slice_idx in range(slice_num):
             slice = scaled.copy()
-            slice.at = offset + (slice_idx + refer)*slice_len
+            slice['at'] = offset + (slice_idx + refer)*slice_len
             yield slice
 
     def uniform_slice_loop(self, elem, offset, refer, elem_len, slice_num):
         slice_len = elem_len / slice_num
         slice = self._rescale(elem, 1/Decimal(slice_num)).copy()
-        slice.at = offset + (Identifier('i', True) + refer) * slice_len
+        slice['at'] = offset + (Identifier('i', True) + refer) * slice_len
         yield Text('i = 0;')
         yield Text('while (i < %s) {' % slice_num)
         yield slice
@@ -517,9 +511,9 @@ def rescale_thick(elem, ratio):
     if ratio == 1:
         return elem
     scaled = elem.copy()
-    scaled.L = elem.L * ratio
+    scaled['L'] = elem['L'] * ratio
     if scaled.type == 'sbend':
-        scaled.angle = scaled.angle * ratio
+        scaled['angle'] = scaled['angle'] * ratio
     return scaled
 
 
@@ -534,21 +528,21 @@ def rescale_makethin(elem, ratio):
         return elem
     elem = elem.copy()
     if elem.type == 'sbend':
-        elem.KNL = [elem.angle * ratio]
-        del elem.angle
-        del elem.HGAP
+        elem['KNL'] = [elem['angle'] * ratio]
+        del elem['angle']
+        del elem['HGAP']
     elif elem.type == 'quadrupole':
-        elem.KNL = [0, elem.K1 * elem.L]
-        del elem.K1
+        elem['KNL'] = [0, elem['K1'] * elem['L']]
+        del elem['K1']
     elif elem.type == 'solenoid':
-        elem.ksi = elem.KS * ratio
-        elem.lrad = elem.L * ratio
-        elem.L = 0
+        elem['ksi'] = elem['KS'] * ratio
+        elem['lrad'] = elem['L'] * ratio
+        elem['L'] = 0
         return
     # set elem_class to multipole
     elem.type = stri('multipole')
     # replace L by LRAD property
-    elem.lrad = elem.pop('L', None)
+    elem['lrad'] = elem.pop('L', None)
     return elem
 
 

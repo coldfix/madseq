@@ -147,17 +147,17 @@ class TestElement(unittest.TestCase):
         mad = "name: type, a=97, b=98, c=99, d=100, e=101;"
         el = madseq.Element.parse(mad)
         self.assertEqual(str(mad), mad)
-        self.assertEqual(el.c, 99)
-        self.assertEqual(el.E, 101)
+        self.assertEqual(el['c'], 99)
+        self.assertEqual(el['E'], 101)
 
     def test_deep_lookup(self):
         el0 = madseq.Element(None, None, dicti(a='a0', b='b0', c='c0'))
         el1 = madseq.Element(None, None, dicti(a='a1', b='b1', d='d1'), el0)
         el2 = madseq.Element(None, None, dicti(a='a2'), el1)
-        self.assertEqual(el2.a, 'a2')
-        self.assertEqual(el2.b, 'b1')
-        self.assertEqual(el2.c, 'c0')
-        self.assertEqual(el2.d, 'd1')
+        self.assertEqual(el2['a'], 'a2')
+        self.assertEqual(el2['b'], 'b1')
+        self.assertEqual(el2['c'], 'c0')
+        self.assertEqual(el2['d'], 'd1')
 
 
 class TestElementTransform(unittest.TestCase):
@@ -176,7 +176,7 @@ class TestMakethin(unittest.TestCase):
         sbend = madseq.Element(None,
                                'SBEND', dicti(angle=3.14, hgap=1, L=3.5))
         scaled = madseq.rescale_makethin(sbend, 0.5)
-        self.assertEqual(scaled.KNL, [1.57])
+        self.assertEqual(scaled['KNL'], [1.57])
         self.assertEqual(scaled.get('angle'), None)
         self.assertEqual(scaled.get('hgap'), None)
         self.assertEqual(scaled.type, 'multipole')
@@ -184,7 +184,7 @@ class TestMakethin(unittest.TestCase):
     def test_rescale_makethin_quadrupole(self):
         quad = madseq.Element(None, 'QUADRUPOLE', dicti(K1=3, L=2.5))
         scaled = madseq.rescale_makethin(quad, 0.5)
-        self.assertEqual(scaled.KNL, [0, 7.5])
+        self.assertEqual(scaled['KNL'], [0, 7.5])
         self.assertEqual(scaled.get('K1'), None)
         self.assertEqual(scaled.type, 'multipole')
 
@@ -192,7 +192,7 @@ class TestMakethin(unittest.TestCase):
         pi = 3.14
         el = madseq.Element(None, 'SBEND', {'angle': pi, 'L': 1})
         scaled = madseq.rescale_thick(el, 0.5)
-        self.assertEqual(scaled.angle, pi/2)
+        self.assertEqual(scaled['angle'], pi/2)
         self.assertEqual(scaled.type, 'SBEND')
 
 

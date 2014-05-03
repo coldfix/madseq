@@ -1,6 +1,12 @@
 Changelog
 ~~~~~~~~~
 
+0.3.2
+=====
+
+- internal: remove attribute access for Element properties
+
+
 0.3.1
 =====
 

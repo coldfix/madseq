@@ -1,6 +1,12 @@
 Changelog
 ~~~~~~~~~
 
+0.3.1
+=====
+
+- use `semantic versioning <http://semver.org/>`
+
+
 0.3
 ===
 

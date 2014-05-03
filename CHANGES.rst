@@ -5,6 +5,7 @@ Changelog
 =====
 
 - internal: remove attribute access for Element properties
+- fix bugged Element.copy and .__contains__ regarding to base elements
 
 
 0.3.1

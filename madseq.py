@@ -288,10 +288,11 @@ class Element(object):
         return Element(name, type, parse_args(args))
 
     def copy(self):
-        return self.__class__(self.name, self.type, self.args.copy())
+        return self.__class__(self.name, self.type, self.args.copy(),
+                              self._base)
 
     def __contains__(self, key):
-        return key in self.args
+        return key in self.args or (self._base and key in self._base)
 
     def __getitem__(self, key):
         try:
@@ -465,7 +466,7 @@ class ElementTransform(object):
                 optic['L'] = elem_len / slice_num
                 return [optic]
             self._makeoptic = make_optic
-            self._stripelem = lambda elem: Element(None, elem.name, {})
+            self._stripelem = lambda elem: Element(None, elem.name, {}, self)
         else:
             self._makeoptic = lambda elem, slice_num: []
             self._stripelem = lambda elem: elem

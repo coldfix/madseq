@@ -599,8 +599,8 @@ class SequenceTransform(object):
 
         for elem in body:
             if elem.type:
-                optic, elem, elem_len = transform(elem, position)
-                templates += optic
+                templ, elem, elem_len = transform(elem, position)
+                templates += templ
                 elements += elem
                 position += elem_len
             else:
@@ -622,7 +622,7 @@ class ElementTransform(object):
     :ivar function match:
     :ivar function _get_slice_num:
     :ivar function _rescale:
-    :ivar function _makeoptic:
+    :ivar function _maketempl:
     :ivar function _stripelem:
     :ivar function _distribution:
     """
@@ -662,12 +662,11 @@ class ElementTransform(object):
             self._rescale = rescale_thick
 
         # whether to use separate optics
-        if selector.get('use_optics', False):
-            # TODO: rename optic => template everywhere
-            self._makeoptic = lambda elem: [elem]
+        if selector.get('template', False):
+            self._maketempl = lambda elem: [elem]
             self._stripelem = lambda elem: Element(None, elem.name, {}, elem)
         else:
-            self._makeoptic = lambda elem: []
+            self._maketempl = lambda elem: []
             self._stripelem = lambda elem: elem
 
         # slice distribution style over element length
@@ -693,10 +692,10 @@ class ElementTransform(object):
         slice_num = self._get_slice_num(elem_len) or 1
         slice_len = Decimal(elem_len) / slice_num
         scaled = self._rescale(elem, 1/Decimal(slice_num))
-        optics = self._makeoptic(scaled)
+        templ = self._maketempl(scaled)
         elem = self._stripelem(scaled)
         elems = self._distribution(elem, offset, refer, slice_num, slice_len)
-        return optics, elems, elem_len
+        return templ, elems, elem_len
 
     def uniform_slice_distribution(self, elem, offset, refer, slice_num, slice_len):
         """

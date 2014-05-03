@@ -151,9 +151,15 @@ class TestElement(unittest.TestCase):
         self.assertEqual(el.E, 101)
 
 
+class TestElementTransform(unittest.TestCase):
 
-class TestSequence(unittest.TestCase):
-    pass
+    def test_replace_with_parent(self):
+        base = madseq.Element('BASE', 'DRIFT', dicti(l=1.5))
+        elem = madseq.Element(None, 'BASE', dicti())
+        transformer = madseq.ElementTransform({})
+
+        tpl, el, l = transformer.replace(elem, 0, 0, base)
+        self.assertEqual(l, 1.5)
 
 
 class TestMakethin(unittest.TestCase):

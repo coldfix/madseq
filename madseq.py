@@ -373,7 +373,9 @@ class SequenceTransform(object):
         self.transforms = [ElementTransform(s) for s in slicing] + []
         self.transforms.append(ElementTransform({}))
 
-    def __call__(self, node):
+    def __call__(self, node, document):
+        if isinstance(node, (Element, Sequence)):
+            document._defs[node.name] = node
 
         if not isinstance(node, Sequence):
             return node
@@ -386,7 +388,7 @@ class SequenceTransform(object):
         def transform(elem, offset):
             for t in self.transforms:
                 if t.match(elem):
-                    return t.replace(elem, offset, refer)
+                    return t.replace(elem, offset, refer, document._defs.get(elem.type))
 
         templates = []      # predefined element templates
         elements = []       # actual elements to put in sequence
@@ -461,8 +463,10 @@ class ElementTransform(object):
         else:
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
-    def replace(self, elem, offset, refer):
-        elem_len = elem.get('L', 0)
+    def replace(self, elem, offset, refer, parent):
+        elem_len = elem.get('L')
+        if elem_len is None:
+            elem_len = parent.get('L', 0) if parent else 0
         slice_num = self._get_slice_num(elem_len) or 1
         optic = self._makeoptic(elem, slice_num)
         elem = self._stripelem(elem)
@@ -624,10 +628,11 @@ class Document(list):
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
+        self._defs = dicti()
         # TODO: lookup table for template elements
 
     def transform(self, node_transform):
-        return Document(node_transform(node) for node in self._nodes)
+        return Document(node_transform(node, self) for node in self._nodes)
 
     @classmethod
     def parse(cls, lines):
@@ -718,6 +723,6 @@ def main(argv=None):
     Document.parse(input_file).transform(node_transform).dump(output_file, fmt)
 main.__doc__ = __doc__
 
+
 if __name__ == '__main__':
     main()
-

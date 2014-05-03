@@ -607,7 +607,7 @@ class SequenceTransform(object):
         head['L'] = position
 
         if templates:
-            templates.insert(0, Text('! Template elements for %s:' % head.get('name')))
+            templates.insert(0, Text('! Template elements for %s:' % head.name))
             templates.append(Text())
 
         return Sequence([head] + elements + [tail], templates)

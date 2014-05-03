@@ -361,11 +361,57 @@ class Sequence(object):
 # Transformations
 #----------------------------------------
 
-def exclusive(mapping, *keys):
-    return sum(key in mapping for key in keys) <= 1
+
+class SequenceTransform(object):
+
+    """Transform sequence."""
+
+    offsets = dicti(entry=0, centre=Decimal(1)/2, exit=1)
+
+    def __init__(self, slicing):
+        # create slicer
+        self.transforms = [ElementTransform(s) for s in slicing] + []
+        self.transforms.append(ElementTransform({}))
+
+    def __call__(self, node, document):
+        if isinstance(node, (Element, Sequence)):
+            document._defs[node.name] = node
+
+        if not isinstance(node, Sequence):
+            return node
+        seq = node
+        first = seq.seq[0]
+        last = seq.seq[-1]
+
+        refer = self.offsets[str(first.get('refer', 'centre'))]
+
+        def transform(elem, offset):
+            for t in self.transforms:
+                if t.match(elem):
+                    return t.replace(elem, offset, refer, document._defs.get(elem.type))
+
+        templates = []      # predefined element templates
+        elements = []       # actual elements to put in sequence
+        position = 0        # current element position
+
+        for elem in seq.seq[1:-1]:
+            if elem.type:
+                optic, elem, elem_len = transform(elem, position)
+                templates += optic
+                elements += elem
+                position += elem_len
+            else:
+                elements.append(elem)
+        first.L = position
+
+        if templates:
+            templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
+            templates.append(Text())
+
+        return Sequence([first] + elements + [last], templates, first.name)
 
 
-class Transform(object):
+class ElementTransform(object):
 
     def __init__(self, selector):
 
@@ -397,6 +443,7 @@ class Transform(object):
 
         # whether to use separate optics
         if selector.get('use_optics', False):
+            # TODO: rename optic => template everywhere
             def make_optic(elem, elem_len, slice_num):
                 optic = elem.copy()
                 optic.L = elem_len / slice_num
@@ -416,8 +463,10 @@ class Transform(object):
         else:
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
-    def replace(self, elem, offset, refer):
-        elem_len = elem.get('L', 0)
+    def replace(self, elem, offset, refer, parent):
+        elem_len = elem.get('L')
+        if elem_len is None:
+            elem_len = parent.get('L', 0) if parent else 0
         slice_num = self._get_slice_num(elem_len) or 1
         optic = self._makeoptic(elem, slice_num)
         elem = self._stripelem(elem)
@@ -483,6 +532,10 @@ def rescale_makethin(elem, ratio):
     return elem
 
 
+def exclusive(mapping, *keys):
+    return sum(key in mapping for key in keys) <= 1
+
+
 #----------------------------------------
 # JSON/YAML serialization
 #----------------------------------------
@@ -493,17 +546,6 @@ def _adjust_element(elem):
     return odicti([('name', elem.name),
                    ('type', elem.type)] +
                   [(k,v) for k,v in elem.args.items() if v is not None]),
-
-
-def _getstate(output_data):
-    return odicti(
-        (seq.name, odicti(
-            list(seq.seq[0].args.items()) +
-            [('elements', list(chain.from_iterable(map(_adjust_element,
-                                                       seq.seq[1:-1])))),]
-        ))
-        for seq in output_data
-        if isinstance(seq, Sequence))
 
 
 class Json(object):
@@ -577,59 +619,25 @@ class Yaml(object):
             lambda loader, node: self.dict(loader.construct_pairs(node)))
         return yaml.load(stream, OrderedLoader)
 
+
 #----------------------------------------
 # main
 #----------------------------------------
 
-def transform(elem, slicing):
-
-    """Transform sequence."""
-
-    if not isinstance(elem, Sequence):
-        return elem
-    seq = elem
-    first = seq.seq[0]
-    last = seq.seq[-1]
-
-    offsets = dicti(entry=0, centre=Decimal(0.5), exit=1)
-    refer = offsets[str(first.get('refer', 'centre'))]
-
-    # create slicer
-    transforms = [Transform(s) for s in slicing] + []
-    transforms.append(Transform({}))
-
-    def transform(elem, offset):
-        for t in transforms:
-            if t.match(elem):
-                return t.replace(elem, offset, refer)
-
-    templates = []      # predefined element templates
-    elements = []       # actual elements to put in sequence
-    position = 0        # current element position
-
-    for elem in seq.seq[1:-1]:
-        if elem.type:
-            optic, elem, elem_len = transform(elem, position)
-            templates += optic
-            elements += elem
-            position += elem_len
-        else:
-            elements.append(elem)
-    first.L = position
-
-    if templates:
-        templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
-        templates.append(Text())
-
-    return Sequence([first] + elements + [last], templates, first.name)
-
-
 class Document(list):
+
+    def __init__(self, nodes):
+        self._nodes = list(nodes)
+        self._defs = dicti()
+        # TODO: lookup table for template elements
+
+    def transform(self, node_transform):
+        return Document(node_transform(node, self) for node in self._nodes)
 
     @classmethod
     def parse(cls, lines):
         """Parse sequence from line iteratable."""
-        return cls(list(chain.from_iterable(map(cls.parse_line, lines))))
+        return cls(Sequence.detect(chain.from_iterable(map(cls.parse_line, lines))))
 
     @classmethod
     def parse_line(cls, line):
@@ -654,6 +662,26 @@ class Document(list):
                 yield Text(command + ';')
         if len(commands) == 1 and not comment:
             yield Text('')
+
+    def _getstate(self, output_data):
+        return odicti(
+            (seq.name, odicti(
+                list(seq.seq[0].args.items()) +
+                [('elements', list(chain.from_iterable(map(_adjust_element,
+                                                           seq.seq[1:-1])))),]
+            ))
+            for seq in self._nodes
+            if isinstance(seq, Sequence))
+
+    def dump(self, stream, fmt='madx'):
+        if fmt == 'json':
+            Json().dump(self._getstate(), stream)
+        elif fmt == 'yaml':
+            Yaml().dump(self._getstate(), stream)
+        elif fmt == 'madx':
+            stream.write("\n".join(map(str, self._nodes)))
+        else:
+            raise ValueError("Invalid format code: {!r}".format(fmt))
 
 
 def main(argv=None):
@@ -681,32 +709,20 @@ def main(argv=None):
             transforms_doc = Yaml().load(f)
     else:
         transforms_doc = []
+    node_transform = SequenceTransform(transforms_doc)
 
-    def load(file):
-        return Sequence.detect(Document.parse(file))
-
-    def edit(input_data):
-        return (transform(el, slicing=transforms_doc)
-                for el in input_data)
-
+    # output format
     if args['--json']:
-        json = Json()
-        def dump(output_data):
-            json.dump(_getstate(output_data), output_file)
-
+        fmt = 'json'
     elif args['--yaml']:
-        yaml = Yaml()
-        def dump(output_data):
-            yaml.dump(_getstate(output_data), output_file)
-
+        fmt = 'yaml'
     else:
-        def dump(output_data):
-            output_file.write("\n".join(map(str, output_data)))
+        fmt = 'madx'
 
     # one line to do it all:
-    dump(edit(load(input_file)))
+    Document.parse(input_file).transform(node_transform).dump(output_file, fmt)
 main.__doc__ = __doc__
+
 
 if __name__ == '__main__':
     main()
-

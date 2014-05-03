@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+0.4.2
+=====
+
+- allow .json files to be passed as the -s parameter (extension is used to
+  distinguish .json from .yaml)
+
+
 0.4.1
 =====
 

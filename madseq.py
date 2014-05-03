@@ -831,6 +831,10 @@ class Json(object):
                   separators=(',', ' : '),
                   cls=ValueEncoder)
 
+    def load(self, stream):
+        """Load data from, using ordered case insensitive dictionaries."""
+        return self.json.load(stream, object_pairs_hook=odicti)
+
 
 class Yaml(object):
 
@@ -979,7 +983,10 @@ def main(argv=None):
     # get slicing definition
     if args['--slice']:
         with open(args['--slice']) as f:
-            transforms_doc = Yaml().load(f)
+            if args['--slice'][:-4].lower() == '.json':
+                transforms_doc = Json().load(f)
+            else:
+                transforms_doc = Yaml().load(f)
     else:
         transforms_doc = []
     node_transform = SequenceTransform(transforms_doc)

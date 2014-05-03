@@ -29,6 +29,8 @@ class TestUtils(unittest.TestCase):
         Re = madseq.Re
         r1 = Re('hello')
         r2 = Re(r1, 'world')
+        self.assertEqual(str(r1), 'hello')
+        self.assertEqual(str(r2), 'helloworld')
         self.assertTrue(r1.search(' helloworld '))
         self.assertFalse(r1.search('yelloworld'))
         self.assertTrue(r2.match('helloworld anything'))
@@ -63,10 +65,10 @@ class test_Parse(unittest.TestCase):
         f = madseq.parse_number('12.')
         s = madseq.Symbolic.parse('pi')
 
-        self.assertEqual(str(f + s), "12 + pi")
-        self.assertEqual(str(s - f), "pi - 12")
-        self.assertEqual(str(i + f * s), "-13 + (12 * pi)")
-        self.assertEqual(str(s / s), "pi / pi")
+        self.assertEqual((f + s).value, "12 + pi")
+        self.assertEqual((s - f).value, "pi - 12")
+        self.assertEqual((i + f * s).value, "-13 + (12 * pi)")
+        self.assertEqual((s / s).value, "pi / pi")
 
 
 

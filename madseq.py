@@ -18,7 +18,7 @@ only a MAD-X input file, it will look for SEQUENCE..ENDSEQUENCE sections in
 the file and update the AT=.. values of all elements.
 """
 
-
+# enforce float division
 from __future__ import division
 
 # standard library
@@ -67,7 +67,14 @@ class stri(str):
 
 class Re(object):
 
-    """Precompiled regular expressions."""
+    """
+    Precompiled regular expressions that remembers the expression string.
+
+    Inherits from :class:`re.SRE_Pattern` by delegation.
+
+    :ivar str s: string expression
+    :ivar SRE_Pattern r: compiled regex
+    """
 
     def __init__(self, *args):
         """Concat the arguments."""
@@ -85,21 +92,49 @@ class Re(object):
 
 class regex(object):
 
-    """List of regular expressions used in this script."""
+    """List of various regular expressions used for parsing MAD-X files."""
 
-    integer = Re(r'(?:\d+)')
+    #----------------------------------------
+    # non-grouping expressions:
+    #----------------------------------------
+
+    # numeric int/float expression
     number = Re(r'(?:[+\-]?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][+\-]?\d+)?)')
-    thingy = Re(r'(?:[^\s,;!]+)')
+
+    # plain word identifier
     identifier = Re(r'(?:[a-zA-Z][\w\.]*)')
+
+    # string with enclosing quotes: "..."
     string = Re(r'(?:"[^"]*")')
+
+    # MAD-X array type with enclosing curly braces: {...}
     array = Re(r'(?:\{[^\}]*\})')
+
+    # non-standard type parameter. this expression is very free-form to
+    # allow arbitrary arithmetic expressions, etc.
+    thingy = Re(r'(?:[^\s,;!]+)')
+
+    # any of the above parameters
     param = Re(r'(?:',string,'|',array,'|',thingy,')')
+
+    # MAD-X command: name: type, *args;
     cmd = Re(r'^\s*(?:(',identifier,r')\s*:)?\s*(',identifier,r')\s*(,.*)?;\s*$')
+
+    #----------------------------------------
+    # grouping expressions
+    #----------------------------------------
+
+    # match single parameter=value argument and create groups:
+    # (argument, assignment, value)
     arg = Re(r',\s*(',identifier,r')\s*(:?=)\s*(',param,')')
 
+    # match TEXT!COMMENT and return both parts as groups
     comment_split = Re(r'^([^!]*)(!.*)?$')
 
+    # match+group a string inside quotes
     is_string = Re(r'^\s*(?:"([^"]*)")\s*$')
+
+    # match+group an identifier
     is_identifier = Re(r'^\s*(',identifier,')\s*$')
 
 
@@ -107,43 +142,82 @@ class regex(object):
 # Line model + parsing + formatting
 #----------------------------------------
 
-
-def fmtArg(value):
-    if isinstance(value, Decimal):
-        return '=' + str(value.normalize())
-    elif isinstance(value, str):
-        return '="%s"' % value
-    elif isinstance(value, (float, int)):
-        return '=' + str(value)
-    elif isinstance(value, (tuple, list)):
-        return '={%s}' % ','.join(map(fmtInner, value))
-    else:
-        return value.fmtArg()
-
-
-def fmtInner(value):
-    if isinstance(value, Decimal):
-        return str(value.normalize())
+def format_argument(key, value):
+    """Format value for MAD-X output including the assignment symbol."""
     try:
-        return value.fmtInner()
+        return key + value.argument
     except AttributeError:
-        return str(value)
+        if value is None:
+            return key
+        return key + '=' + format_value(value)
+
+
+def format_value(value):
+    """Format value for MAD-X output."""
+    try:
+        return value.value
+    except AttributeError:
+        if isinstance(value, Decimal):
+            return str(value.normalize())
+        elif isinstance(value, str):
+            return '"' + value + '"'
+        elif isinstance(value, (float, int)):
+            return str(value)
+        elif isinstance(value, (tuple, list)):
+            return '{' + ','.join(map(format_value, value)) + '}'
+        else:
+            raise ValueError("Unknown data type: {!r}".format(value))
+
+
+def format_safe(value):
+    """
+    Format as safe token in a arithmetic expression.
+
+    This adds braces for composed expressions. For atomic types it is the
+    same as :func:`format_value`.
+    """
+    try:
+        return value.safe_value
+    except AttributeError:
+        return format_value(value)
 
 
 class Value(object):
 
+    """
+    Base class for some types parsed from MAD-X input parameters.
+
+    :ivar value: Actual value. Type depends on the concrete derived class.
+    :ivar str assign: Assignment symbol, either ':=' or '='
+    """
+
     def __init__(self, value, assign='='):
-        self.value = value
-        self.assign = assign
+        """Initialize value."""
+        self._value = value
+        self._assign = assign
+
+    @property
+    def argument(self):
+        """Format for MAD-X output including assignment symbol"""
+        return self._assign + self.value
+
+    @property
+    def value(self):
+        """Get value as string."""
+        return str(self._value)
+
+    @property
+    def safe_value(self):
+        """Get string that can safely occur inside an arithmetic expression."""
+        return self.value
 
     def __str__(self):
-        return str(self.value)
-
-    def fmtArg(self):
-        return self.assign + str(self)
+        """Return formatted value."""
+        return self.value
 
     @classmethod
     def parse(cls, text, assign='='):
+        """Parse MAD-X parameter input as any of the known Value types."""
         try:
             return parse_number(text)
         except ValueError:
@@ -164,36 +238,42 @@ def parse_number(text):
         try:
             return Decimal(text)
         except InvalidOperation:
-            raise ValueError("Not a floating point: %s" % text)
+            raise ValueError("Not a floating point: {!r}".format(text))
 
 
 @none_checked
 def parse_string(text):
-    """Used to parse string values."""
+    """Parse string from quoted expression."""
     try:
         return regex.is_string.match(str(text)).groups()[0]
     except AttributeError:
-        raise ValueError("Invalid string: %s" % (text,))
+        raise ValueError("Invalid string: {!r}".format(text))
 
 
 class Array(Value):
 
+    """
+    Corresponds to MAD-X ARRAY type.
+    """
+
     @classmethod
-    def parse(cls, text, assign=False):
+    def parse(cls, text, assign='='):
         """Parse a MAD-X array."""
+        text = text.strip()
         if text[0] != '{':
-            raise ValueError("Invalid array: %s" % (text,))
+            raise ValueError("Invalid array: {!r}".format(text))
         if text[-1] != '}':
-            raise Exception("Array not terminated correctly: %s" % (text,))
+            raise Exception("Ill-formed ARRAY: {!r}".format(text))
         try:
             return cls([Value.parse(field.strip(), assign)
                         for field in text[1:-1].split(',')],
                        assign)
         except ValueError:
-            raise Exception("Array not well-formed: %s" % (text,))
+            raise Exception("Ill-formed ARRAY: {!r}".format(text))
 
-    def __str__(self):
-        return '{' + ','.join(map(str, self.value)) + '}'
+    @property
+    def value(self):
+        return '{' + ','.join(map(str, self._value)) + '}'
 
 
 class Symbolic(Value):
@@ -202,15 +282,18 @@ class Symbolic(Value):
 
     @classmethod
     def parse(cls, text, assign=False):
+        """Parse either a :class:`Identifier` or a :class:`Composed`."""
         try:
             return Identifier.parse(text, assign)
         except:
             return Composed.parse(text, assign)
 
     def __binop(op):
+        """Internal utility to make a binary operator."""
         return lambda self, other: Composed.create(self, op, other)
 
     def __rbinop(op):
+        """Internal utility to make a binary right hand side operator."""
         return lambda self, other: Composed.create(other, op, self)
 
     __add__ = __binop('+')
@@ -227,31 +310,38 @@ class Symbolic(Value):
 
 
 class Identifier(Symbolic):
-    """Identifier."""
+
+    """Plain word identifier such as a variable name."""
+
     @classmethod
     def parse(cls, text, assign='='):
+        """Parse identifier."""
         try:
             return cls(regex.is_identifier.match(text).groups()[0], assign)
         except AttributeError:
-            raise ValueError("Invalid identifier: %s" % (text,))
+            raise ValueError("Invalid identifier: {!r}".format(text))
 
 
 class Composed(Symbolic):
 
-    """Composed value."""
+    """Composed expression."""
 
     @classmethod
     def parse(cls, text, assign='='):
+        """Allows any expression unchecked."""
         return cls(text, assign)
 
     @classmethod
     def create(cls, a, x, b):
-        return Composed('%s %s %s'%(fmtInner(a),x,fmtInner(b)),
-                        (getattr(a, 'assign', False) or
-                         getattr(b, 'assign', False)))
+        """Create a composed expression from two other expressions."""
+        return Composed(
+            ' '.join((format_safe(a), x, format_safe(b))),
+            getattr(a, 'assign', False) or getattr(b, 'assign', False))
 
-    def fmtInner(self):
-        return '(' + str(self.value) + ')'
+    @property
+    def safe_value(self):
+        """Add braces for use inside another expression."""
+        return '(' + self.value + ')'
 
 
 def parse_args(text):
@@ -264,9 +354,18 @@ class Element(object):
 
     """
     Single MAD-X element.
+
+    :ivar str name: element name or ``None``
+    :ivar str type: element type name
+    :ivar odicti args: element arguments
+    :ivar _base: base element, if available
+
+    :class:`Element` a :class:`dict`-like interface to access arguments.
+    Argument access is defaulted to base elements if available.
     """
 
-    __slots__ = ['name', 'type', 'args', '_base']
+    __slots__ = ['name', 'type', 'args',
+                 '_base']
 
     def __init__(self, name, type, args, base=None):
         """
@@ -275,6 +374,7 @@ class Element(object):
         :param str name: name of the element (colon prefix)
         :param str type: command name or element type
         :param dict args: command arguments
+        :param base: base element
         """
         self.name = stri(name)
         self.type = stri(type)
@@ -287,14 +387,33 @@ class Element(object):
         name, type, args = regex.cmd.match(text).groups()
         return Element(name, type, parse_args(args))
 
+    def __str__(self):
+        """Format element in MAD-X format."""
+        return ''.join((
+            self.name + ': ' if self.name else '',
+            ', '.join(
+                [self.type] +
+                [format_argument(k, v) for k,v in self.args.items()]),
+            ';'))
+
+    def _getstate(self):
+        """Get a serializeable state for :class:`Json` and :class:`Yaml`."""
+        return odicti([('name', self.name),
+                       ('type', self.type)] + list(self.args.items()))
+
+    # MutableMapping interface:
+
     def copy(self):
+        """Create a copy of this element that can be safely modified."""
         return self.__class__(self.name, self.type, self.args.copy(),
                               self._base)
 
     def __contains__(self, key):
+        """Check whether key exists as argument in self or base."""
         return key in self.args or (self._base and key in self._base)
 
     def __getitem__(self, key):
+        """Get argument value from self or base."""
         try:
             return self.args[key]
         except KeyError:
@@ -303,18 +422,22 @@ class Element(object):
             raise
 
     def __setitem__(self, key, val):
+        """Set argument value in self."""
         self.args[key] = val
 
     def __delitem__(self, key):
+        """Delete argument in self."""
         del self.args[key]
 
     def get(self, key, default=None):
+        """Get argument value or default from self or base."""
         try:
             return self[key]
         except KeyError:
             return default
 
     def pop(self, key, *default):
+        """Get argument value from self, base or default and remove it from self."""
         try:
             return self.args.pop(key)
         except KeyError:
@@ -325,40 +448,63 @@ class Element(object):
                     return default[0]
                 raise
 
-    def __str__(self):
-        """Output element in MAD-X format."""
-        def _fmt_arg(k, v):
-            return ', %s' % k if v is None else ', %s%s' % (k,fmtArg(v))
-        return '%s%s%s;' % ('%s: ' % self.name if self.name else '',
-                            self.type,
-                            ''.join(_fmt_arg(k, v)
-                                    for k,v in self.args.items()))
-
     def __eq__(self, other):
+        """Check if some other element is the same."""
         return (self.name == other.name and
                 self.type == other.type and
                 self.args == other.args)
 
 
 class Text(str):
+
+    """A text section in a MAD-X document."""
+
     type = None
 
 
 class Sequence(object):
 
-    """MAD-X sequence."""
+    """
+    MAD-X sequence.
+    """
 
-    def __init__(self, seq, opt=None, name=None):
-        self.name = name
-        self.opt = opt
-        self.seq = seq
+    def __init__(self, elements, preface=None):
+        self._preface = preface or []
+        self._elements = elements
+
+    @property
+    def name(self):
+        """Get sequence name."""
+        return self.head.name
+
+    @property
+    def head(self):
+        """Get sequence head element (the one with type SEQUENCE)."""
+        return self._elements[0]
+
+    @property
+    def body(self):
+        """Get sequence body (all elements inside)."""
+        return self._elements[1:-1]
+
+    @property
+    def tail(self):
+        """Get sequence tail element (the one with type ENDSEQUENCE)."""
+        return self._elements[-1]
 
     def __str__(self):
         """Format sequence to MAD-X format."""
-        return '\n'.join(map(str, (self.opt or []) + self.seq))
+        return '\n'.join(map(str, self._preface + self._elements))
 
     @classmethod
     def detect(cls, elements):
+        """
+        Filter SEQUENCE..ENDSEQUENCE groups in an element list.
+
+        :param iterable elements:
+        :returns: unmodified elements and generated :class:`Sequence` objects
+        :rtype: generator
+        """
         it = iter(elements)
         for elem in it:
             if elem.type == 'sequence':
@@ -372,38 +518,59 @@ class Sequence(object):
             else:
                 yield elem
 
+
 #----------------------------------------
 # Transformations
 #----------------------------------------
 
-
 class SequenceTransform(object):
 
-    """Transform sequence."""
+    """
+    Sequence transformation constituted of Element transformation rules.
 
-    offsets = dicti(entry=0, centre=Decimal(1)/2, exit=1)
+    :ivar list _transforms: list of :class:`ElementTransform`s
+    :cvar dicti _offsets: associates numeric offset multipliers to offset names
+    """
+
+    _offsets = dicti(entry=0, centre=Decimal(1)/2, exit=1)
 
     def __init__(self, slicing):
-        # create slicer
-        self.transforms = [ElementTransform(s) for s in slicing] + []
-        self.transforms.append(ElementTransform({}))
+        """
+        Create transformation rules from the definition list.
+
+        :param list slicing: list of :class:`ElementTransform` definitions
+        """
+        self._transforms = [ElementTransform(s) for s in slicing] + []
+        self._transforms.append(ElementTransform({}))
 
     def __call__(self, node, defs):
+
+        """
+        Transform :class:`Sequence` according to the rule list.
+
+        :param Sequence node: current sequence to transform
+        :param dict defs: element lookup table for base elements
+
+        If the ``node`` is not of type :class:`Sequence`, it will be
+        returned unchanged, but may still be added to the ``defs`` lookup
+        table.
+        """
+
         if isinstance(node, (Element, Sequence)):
             defs[node.name] = node
-
         if not isinstance(node, Sequence):
             return node
-        seq = node
-        first = seq.seq[0]
-        last = seq.seq[-1]
 
-        refer = self.offsets[str(first.get('refer', 'centre'))]
+        head = node.head.copy()
+        body = node.body
+        tail = node.tail
+
+        refer = self._offsets[str(head.get('refer', 'centre'))]
 
         def transform(elem, offset):
             if elem.type:
                 elem._base = defs.get(elem.type)
-            for t in self.transforms:
+            for t in self._transforms:
                 if t.match(elem):
                     return t.replace(elem, offset, refer)
 
@@ -411,7 +578,7 @@ class SequenceTransform(object):
         elements = []       # actual elements to put in sequence
         position = 0        # current element position
 
-        for elem in seq.seq[1:-1]:
+        for elem in body:
             if elem.type:
                 optic, elem, elem_len = transform(elem, position)
                 templates += optic
@@ -419,18 +586,35 @@ class SequenceTransform(object):
                 position += elem_len
             else:
                 elements.append(elem)
-        first['L'] = position
+        head['L'] = position
 
         if templates:
-            templates.insert(0, Text('! Template elements for %s:' % first.get('name')))
+            templates.insert(0, Text('! Template elements for %s:' % head.get('name')))
             templates.append(Text())
 
-        return Sequence([first] + elements + [last], templates, first.name)
+        return Sequence([head] + elements + [tail], templates)
 
 
 class ElementTransform(object):
 
+    """
+    Single Element transformation rule.
+
+    :ivar function match:
+    :ivar function _get_slice_num:
+    :ivar function _rescale:
+    :ivar function _makeoptic:
+    :ivar function _stripelem:
+    :ivar function _distribution:
+    """
+
     def __init__(self, selector):
+
+        """
+        Create transformation rule from the serialized definition.
+
+        :param dict selector:
+        """
 
         # matching criterium
         exclusive(selector, 'name', 'type')
@@ -481,6 +665,15 @@ class ElementTransform(object):
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
     def replace(self, elem, offset, refer):
+        """
+        Transform the element at ``offset.
+
+        :param Element elem:
+        :param Decimal offset: element entry position
+        :param Decimal refer: sequence addressing style
+        :returns: template elements, element slices, element length
+        :rtype: tuple
+        """
         elem_len = elem.get('L', 0)
         slice_num = self._get_slice_num(elem_len) or 1
         optic = self._makeoptic(elem, slice_num)
@@ -489,6 +682,17 @@ class ElementTransform(object):
         return optic, elems, elem_len
 
     def uniform_slice_distribution(self, elem, offset, refer, elem_len, slice_num):
+        """
+        Slice an element uniformly into short pieces.
+
+        :param Element elem:
+        :param Decimal offset: element entry position
+        :param Decimal refer: sequence addressing style
+        :param Element elem_len: element length
+        :param int slice_num: number of slices
+        :returns: element slices
+        :rtype: generator
+        """
         slice_len = Decimal(elem_len) / slice_num
         scaled = self._rescale(elem, 1/Decimal(slice_num))
         for slice_idx in range(slice_num):
@@ -497,6 +701,17 @@ class ElementTransform(object):
             yield slice
 
     def uniform_slice_loop(self, elem, offset, refer, elem_len, slice_num):
+        """
+        Slice an element uniformly into short pieces using a loop construct.
+
+        :param Element elem:
+        :param Decimal offset: element entry position
+        :param Decimal refer: sequence addressing style
+        :param Element elem_len: element length
+        :param int slice_num: number of slices
+        :returns: element slices
+        :rtype: generator
+        """
         slice_len = elem_len / slice_num
         slice = self._rescale(elem, 1/Decimal(slice_num)).copy()
         slice['at'] = offset + (Identifier('i', True) + refer) * slice_len
@@ -523,7 +738,7 @@ def rescale_makethin(elem, ratio):
     Shrink/grow element size, while transforming elements to MULTIPOLEs.
 
     NOTE: rescale_makethin is currently not recommended!  If you use it,
-    you have to make sure, your slice length will be sufficiently small! 
+    you have to make sure, your slice length will be sufficiently small!
     """
     if elem.type not in ('sbend', 'quadrupole', 'solenoid'):
         return elem
@@ -548,30 +763,26 @@ def rescale_makethin(elem, ratio):
 
 
 def exclusive(mapping, *keys):
+    """Check that at most one of the keys is contained in the mapping."""
     return sum(key in mapping for key in keys) <= 1
 
 
 #----------------------------------------
-# JSON/YAML serialization
+# Serialization
 #----------------------------------------
-
-def _adjust_element(elem):
-    if not elem.type:
-        return ()
-    return odicti([('name', elem.name),
-                   ('type', elem.type)] +
-                  [(k,v) for k,v in elem.args.items() if v is not None]),
-
 
 class Json(object):
 
+    """JSON serialization utility."""
+
     def __init__(self):
+        """Import json module for later use."""
         import json
         self.json = json
 
     def dump(self, data, stream):
+        """Dump data with types defined in this module."""
         json = self.json
-
         class fakefloat(float):
             """Used to serialize Decimal.
             See: http://stackoverflow.com/a/8274307/650222"""
@@ -579,7 +790,6 @@ class Json(object):
                 self._value = value
             def __repr__(self):
                 return str(self._value)
-
         class ValueEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, Value):
@@ -588,7 +798,6 @@ class Json(object):
                     return fakefloat(obj.normalize())
                 # Let the base class default method raise the TypeError
                 return json.JSONEncoder.default(self, obj)
-
         json.dump(data, stream,
                   indent=2,
                   separators=(',', ' : '),
@@ -597,13 +806,17 @@ class Json(object):
 
 class Yaml(object):
 
+    """YAML serialization utility."""
+
     def __init__(self):
+        """Import yaml module for later use."""
         import yaml
         import pydicti
         self.yaml = yaml
         self.dict = pydicti.odicti
 
     def dump(self, data, stream=None):
+        """Dump data with types defined in this module."""
         yaml = self.yaml
         class Dumper(yaml.SafeDumper):
             pass
@@ -628,6 +841,7 @@ class Yaml(object):
         return yaml.dump(data, stream, Dumper, default_flow_style=False)
 
     def load(self, stream):
+        """Load data from, using ordered case insensitive dictionaries."""
         yaml = self.yaml
         class OrderedLoader(yaml.SafeLoader):
             pass
@@ -643,11 +857,18 @@ class Yaml(object):
 
 class Document(list):
 
+    """
+    MAD-X document representation.
+
+    :ivar list _nodes: list of Text/Element/Sequence nodes
+    """
+
     def __init__(self, nodes):
+        """Store the list of nodes."""
         self._nodes = list(nodes)
-        # TODO: lookup table for template elements
 
     def transform(self, node_transform):
+        """Create a new transformed document using the node_transform."""
         defs = dicti()
         return Document(node_transform(node, defs)
                         for node in self._nodes)
@@ -682,16 +903,24 @@ class Document(list):
             yield Text('')
 
     def _getstate(self):
+        """Get a serializeable state for :class:`Json` and :class:`Yaml`."""
         return odicti(
             (seq.name, odicti(
-                list(seq.seq[0].args.items()) +
-                [('elements', list(chain.from_iterable(map(_adjust_element,
-                                                           seq.seq[1:-1])))),]
+                list(seq.head.args.items()) +
+                [('elements', [elem._getstate()
+                               for elem in seq.body
+                               if elem.type])]
             ))
             for seq in self._nodes
             if isinstance(seq, Sequence))
 
     def dump(self, stream, fmt='madx'):
+        """
+        Serialize to the stream.
+
+        :param stream: file object
+        :param str fmt: either 'madx', 'yaml' or 'json'
+        """
         if fmt == 'json':
             Json().dump(self._getstate(), stream)
         elif fmt == 'yaml':

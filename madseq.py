@@ -403,6 +403,23 @@ class Element(object):
         return odicti([('name', self.name),
                        ('type', self.type)] + list(self.args.items()))
 
+    @property
+    def base_type(self):
+        """Return the base type name."""
+        if self._base:
+            return self._base.base_type
+        return self.type
+
+    @property
+    def all_args(self):
+        """Return merged arguments of self and bases."""
+        if self._base:
+            args = self._base.all_args
+        else:
+            args = odicti()
+        args.update(self.args)
+        return args
+
     # MutableMapping interface:
 
     def copy(self):
@@ -625,7 +642,7 @@ class ElementTransform(object):
             self.match = lambda elem: elem.name == name
         elif 'type' in selector:
             type = selector['type']
-            self.match = lambda elem: elem.type == type
+            self.match = lambda elem: elem.base_type == type
         else:
             self.match = lambda elem: True
 
@@ -730,7 +747,7 @@ def rescale_thick(elem, ratio):
         return elem
     scaled = elem.copy()
     scaled['L'] = elem['L'] * ratio
-    if scaled.type == 'sbend':
+    if scaled.base_type == 'sbend':
         scaled['angle'] = scaled['angle'] * ratio
     return scaled
 
@@ -742,23 +759,23 @@ def rescale_makethin(elem, ratio):
     NOTE: rescale_makethin is currently not recommended!  If you use it,
     you have to make sure, your slice length will be sufficiently small!
     """
-    if elem.type not in ('sbend', 'quadrupole', 'solenoid'):
+    base_type = elem.base_type
+    if base_type not in ('sbend', 'quadrupole', 'solenoid'):
         return elem
-    elem = elem.copy()
-    if elem.type == 'sbend':
-        elem['KNL'] = [elem['angle'] * ratio]
-        del elem['angle']
-        del elem['HGAP']
-    elif elem.type == 'quadrupole':
-        elem['KNL'] = [0, elem['K1'] * elem['L']]
-        del elem['K1']
-    elif elem.type == 'solenoid':
+    if base_type == 'solenoid':
+        elem = elem.copy()
         elem['ksi'] = elem['KS'] * ratio
         elem['lrad'] = elem['L'] * ratio
         elem['L'] = 0
-        return
-    # set elem_class to multipole
-    elem.type = stri('multipole')
+        return elem
+    elem = Element(elem.name, 'multipole', elem.all_args)
+    if base_type == 'sbend':
+        elem['KNL'] = [elem['angle'] * ratio]
+        del elem['angle']
+        del elem['HGAP']
+    elif base_type == 'quadrupole':
+        elem['KNL'] = [0, elem['K1'] * elem['L']]
+        del elem['K1']
     # replace L by LRAD property
     elem['lrad'] = elem.pop('L', None)
     return elem

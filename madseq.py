@@ -811,9 +811,7 @@ class Yaml(object):
     def __init__(self):
         """Import yaml module for later use."""
         import yaml
-        import pydicti
         self.yaml = yaml
-        self.dict = pydicti.odicti
 
     def dump(self, data, stream=None):
         """Dump data with types defined in this module."""
@@ -831,7 +829,7 @@ class Yaml(object):
         def _Decimal_representer(dumper, data):
             return dumper.represent_scalar(u'tag:yaml.org,2002:float',
                                            str(data).lower())
-        Dumper.add_representer(self.dict, _dict_representer)
+        Dumper.add_representer(odicti, _dict_representer)
         Dumper.add_representer(stri.cls, _stri_representer)
         Dumper.add_representer(Symbolic, _Value_representer)
         Dumper.add_representer(Identifier, _Value_representer)
@@ -847,7 +845,7 @@ class Yaml(object):
             pass
         OrderedLoader.add_constructor(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            lambda loader, node: self.dict(loader.construct_pairs(node)))
+            lambda loader, node: odicti(loader.construct_pairs(node)))
         return yaml.load(stream, OrderedLoader)
 
 

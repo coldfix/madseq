@@ -150,15 +150,23 @@ class TestElement(unittest.TestCase):
         self.assertEqual(el.c, 99)
         self.assertEqual(el.E, 101)
 
+    def test_deep_lookup(self):
+        el0 = madseq.Element(None, None, dicti(a='a0', b='b0', c='c0'))
+        el1 = madseq.Element(None, None, dicti(a='a1', b='b1', d='d1'), el0)
+        el2 = madseq.Element(None, None, dicti(a='a2'), el1)
+        self.assertEqual(el2.a, 'a2')
+        self.assertEqual(el2.b, 'b1')
+        self.assertEqual(el2.c, 'c0')
+        self.assertEqual(el2.d, 'd1')
+
 
 class TestElementTransform(unittest.TestCase):
 
     def test_replace_with_parent(self):
-        base = madseq.Element('BASE', 'DRIFT', dicti(l=1.5))
-        elem = madseq.Element(None, 'BASE', dicti())
+        base = madseq.Element('BASE', 'DRIFT', dicti(l=1.5, k=2))
+        elem = madseq.Element(None, 'BASE', dicti(), base)
         transformer = madseq.ElementTransform({})
-
-        tpl, el, l = transformer.replace(elem, 0, 0, base)
+        tpl, el, l = transformer.replace(elem, 0, 0)
         self.assertEqual(l, 1.5)
 
 

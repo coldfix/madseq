@@ -5,6 +5,7 @@ Changelog
 =====
 
 - use `semantic versioning <http://semver.org/>`
+- fix deep attribute lookup for elements
 
 
 0.3

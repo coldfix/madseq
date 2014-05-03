@@ -36,7 +36,7 @@ from pydicti import odicti, dicti
 # meta data
 #----------------------------------------
 
-__version__ = 'madseq 0.3.0'
+__version__ = 'madseq 0.3.1'
 
 __all__ = [
     'Element', 'Sequence', 'Document',
@@ -268,7 +268,7 @@ class Element(object):
 
     __slots__ = ['name', 'type', 'args']
 
-    def __init__(self, name, type, args):
+    def __init__(self, name, type, args, base=None):
         """
         Initialize an Element object.
 
@@ -279,6 +279,7 @@ class Element(object):
         self.name = stri(name)
         self.type = stri(type)
         self.args = args
+        self._base = base
 
     @classmethod
     def parse(cls, text):
@@ -290,7 +291,7 @@ class Element(object):
         return self.__class__(self.name, self.type, self.args.copy())
 
     def __getattr__(self, key):
-        return self.args[key]
+        return self[key]
 
     def __setattr__(self, key, val):
         if key in self.__slots__:
@@ -304,11 +305,30 @@ class Element(object):
     def __delattr__(self, key):
         del self.args[key]
 
+    def __getitem__(self, key):
+        try:
+            return self.args[key]
+        except KeyError:
+            if self._base:
+                return self._base[key]
+            raise
+
     def get(self, key, default=None):
-        return self.args.get(key, default)
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def pop(self, key, *default):
-        return self.args.pop(key, *default)
+        try:
+            return self.args.pop(key)
+        except KeyError:
+            try:
+                return self._base[key]
+            except (KeyError, TypeError):
+                if default:
+                    return default[0]
+                raise
 
     def __str__(self):
         """Output element in MAD-X format."""
@@ -373,9 +393,9 @@ class SequenceTransform(object):
         self.transforms = [ElementTransform(s) for s in slicing] + []
         self.transforms.append(ElementTransform({}))
 
-    def __call__(self, node, document):
+    def __call__(self, node, defs):
         if isinstance(node, (Element, Sequence)):
-            document._defs[node.name] = node
+            defs[node.name] = node
 
         if not isinstance(node, Sequence):
             return node
@@ -386,9 +406,11 @@ class SequenceTransform(object):
         refer = self.offsets[str(first.get('refer', 'centre'))]
 
         def transform(elem, offset):
+            if elem.type:
+                elem._base = defs.get(elem.type)
             for t in self.transforms:
                 if t.match(elem):
-                    return t.replace(elem, offset, refer, document._defs.get(elem.type))
+                    return t.replace(elem, offset, refer)
 
         templates = []      # predefined element templates
         elements = []       # actual elements to put in sequence
@@ -463,10 +485,8 @@ class ElementTransform(object):
         else:
             raise ValueError("Unknown slicing style: {!r}".format(style))
 
-    def replace(self, elem, offset, refer, parent):
-        elem_len = elem.get('L')
-        if elem_len is None:
-            elem_len = parent.get('L', 0) if parent else 0
+    def replace(self, elem, offset, refer):
+        elem_len = elem.get('L', 0)
         slice_num = self._get_slice_num(elem_len) or 1
         optic = self._makeoptic(elem, slice_num)
         elem = self._stripelem(elem)
@@ -628,11 +648,11 @@ class Document(list):
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
-        self._defs = dicti()
         # TODO: lookup table for template elements
 
     def transform(self, node_transform):
-        return Document(node_transform(node, self) for node in self._nodes)
+        return Document(node_transform(node, self, dicti())
+                        for node in self._nodes)
 
     @classmethod
     def parse(cls, lines):

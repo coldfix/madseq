@@ -17,7 +17,7 @@ except IOError:
 
 setup(
     name='madseq',
-    version='0.3.0',
+    version='0.3.1',
     description='Parser/transformator for MAD-X sequences',
     long_description=long_description,
     author='Thomas Gläßle',

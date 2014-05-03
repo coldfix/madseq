@@ -1,6 +1,12 @@
 Changelog
 ~~~~~~~~~
 
+0.4.0
+=====
+
+- add 'use_at' slicing option that enables to use AT values
+
+
 0.3.2
 =====
 

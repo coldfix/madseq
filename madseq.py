@@ -599,10 +599,9 @@ class SequenceTransform(object):
 
         for elem in body:
             if elem.type:
-                templ, elem, elem_len = transform(elem, position)
+                templ, elem, position = transform(elem, position)
                 templates += templ
                 elements += elem
-                position += elem_len
             else:
                 elements.append(elem)
         head['L'] = position
@@ -620,6 +619,7 @@ class ElementTransform(object):
     Single Element transformation rule.
 
     :ivar function match:
+    :ivar function _get_position:
     :ivar function _get_slice_num:
     :ivar function _rescale:
     :ivar function _maketempl:
@@ -645,6 +645,17 @@ class ElementTransform(object):
             self.match = lambda elem: elem.base_type == type
         else:
             self.match = lambda elem: True
+
+        # whether to use or overwrite manual AT values
+        if selector.get('use_at', True):
+            def _get_position(elem, elem_len, offset, refer):
+                try:
+                    return elem['at'] - elem_len * refer
+                except KeyError:
+                    return offset
+            self._get_position = _get_position
+        else:
+            self._get_position = lambda elem, elem_len, offset, refer: offset
 
         # number of slices per element
         exclusive(selector, 'density', 'slice')
@@ -689,13 +700,14 @@ class ElementTransform(object):
         :rtype: tuple
         """
         elem_len = elem.get('L', 0)
+        offset = self._get_position(elem, elem_len, offset, refer)
         slice_num = self._get_slice_num(elem_len) or 1
         slice_len = Decimal(elem_len) / slice_num
         scaled = self._rescale(elem, 1/Decimal(slice_num))
         templ = self._maketempl(scaled)
         elem = self._stripelem(scaled)
         elems = self._distribution(elem, offset, refer, slice_num, slice_len)
-        return templ, elems, elem_len
+        return templ, elems, offset + elem_len
 
     def uniform_slice_distribution(self, elem, offset, refer, slice_num, slice_len):
         """

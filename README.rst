@@ -58,10 +58,12 @@ entry is a dictionary with the following groups of mutually exclusive keys::
     str type: match only elements with the specified type
     str name: match only elements with the specified name
 
+    bool use_at: use manually entered AT values, default is True
+
     float density: slice element with the specified number of slices per meter
     int slice: slice element using a fixed count, default=1
 
-    bool makethin: whether to convert the slices  to MULTIPOLE
+    bool makethin: whether to convert the slices to MULTIPOLE
 
     bool template: whether to put a template for the element in front
 

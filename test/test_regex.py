@@ -43,8 +43,8 @@ class Test_regex(unittest.TestCase):
         self.assertFalse(self.r.match('1a'))
 
     def test_string(self):
-        self.assertTrue(self.r.match('"hello world"'))
-        self.assertTrue(self.r.match('"hello !,; world"'))
+        self.assertTrue(self.r.match('"foo bar"'))
+        self.assertTrue(self.r.match('"foo !,; bar"'))
         self.assertFalse(self.r.match('"foo" bar"'))
         self.assertFalse(self.r.match('foo" bar"'))
         self.assertFalse(self.r.match(''))
@@ -55,7 +55,7 @@ class Test_regex(unittest.TestCase):
         self.assertTrue(self.r.match('23.0'))
         self.assertTrue(self.r.match('-1e+1'))
         self.assertTrue(self.r.match('+2e-3'))
-        self.assertTrue(self.r.match('"hello world"'))
+        self.assertTrue(self.r.match('"foo bar"'))
         self.assertFalse(self.r.match('"foo" bar"'))
         self.assertFalse(self.r.match('foo" bar"'))
         self.assertFalse(self.r.match(''))
@@ -65,19 +65,39 @@ class Test_regex(unittest.TestCase):
         self.assertFalse(self.r.match('e!'))
 
     def test_cmd(self):
-        pass
+        # TODO: command without arguments or name
+        self.assertTrue(self.r.match('sbend, l=1;'))
+        self.assertTrue(self.r.match('s: sbend;'))
+        self.assertTrue(self.r.match('multipole, l=0, knl={0, 1.2e3};'))
+        self.assertTrue(self.r.match('quadrupole, k1=(alpha+PI)*4.2e1;'))
+        self.assertTrue(self.r.match('quadrupole, plain;'))
+        self.assertFalse(self.r.match(';'))
+        self.assertFalse(self.r.match('xxx'))
+        self.assertFalse(self.r.match('xxx:;'))
+        self.assertFalse(self.r.match('xxx: 3;'))
+        self.assertFalse(self.r.match('xxx| foo, bla;'))
 
     def test_arg(self):
-        pass
+        # TODO: plain word parameters (without value)
+        # TODO: spaces in thingy expressions
+        self.assertEqual(self.r.match(', par=val').groups(),
+                         ('par', '=', 'val'))
+        self.assertEqual(self.r.match(', par := 3.2 ').groups(),
+                         ('par', ':=', '3.2'))
+        self.assertEqual(self.r.match(', par := (a+b)*c ').groups(),
+                         ('par', ':=', '(a+b)*c'))
 
     def test_comment_split(self):
-        pass
+        self.assertEqual(self.r.match(' text ! comment ! bla').groups(),
+                         (' text ', '! comment ! bla'))
 
     def test_is_string(self):
-        pass
+        self.assertEqual(self.r.match('  " foo * bar"').groups(),
+                         (' foo * bar',))
 
     def test_is_identifier(self):
-        pass
+        self.assertEqual(self.r.match(' some0alpha1 ').groups(),
+                         ('some0alpha1',))
 
 
 if __name__ == '__main__':

@@ -126,7 +126,7 @@ class regex(object):
 
     # match single parameter=value argument and create groups:
     # (argument, assignment, value)
-    arg = Re(r',\s*(',identifier,r')\s*(:?=)\s*(',param,')')
+    arg = Re(r',\s*(',identifier,r')\s*(:?=)\s*(',param,')\s*')
 
     # match TEXT!COMMENT and return both parts as groups
     comment_split = Re(r'^([^!]*)(!.*)?$')
@@ -166,7 +166,7 @@ def format_value(value):
         elif isinstance(value, (tuple, list)):
             return '{' + ','.join(map(format_value, value)) + '}'
         else:
-            raise ValueError("Unknown data type: {!r}".format(value))
+            raise TypeError("Unknown data type: {!r}".format(value))
 
 
 def format_safe(value):
@@ -214,6 +214,10 @@ class Value(object):
     def __str__(self):
         """Return formatted value."""
         return self.expr
+
+    def __eq__(self, other):
+        """Compare the value."""
+        return other == self.value
 
     @classmethod
     def parse(cls, text, assign='='):
@@ -348,6 +352,7 @@ class Composed(Symbolic):
 
 def parse_args(text):
     """Parse argument list into ordered dictionary."""
+    # TODO: use .split(',') to make expression simpler
     return odicti((key, Value.parse(val, assign))
                   for key,assign,val in regex.arg.findall(text or ''))
 
@@ -431,6 +436,10 @@ class Element(object):
         """Check whether key exists as argument in self or base."""
         return key in self.args or (self._base and key in self._base)
 
+    def __delitem__(self, key):
+        """Delete argument in self."""
+        del self.args[key]
+
     def __getitem__(self, key):
         """Get argument value from self or base."""
         try:
@@ -443,10 +452,6 @@ class Element(object):
     def __setitem__(self, key, val):
         """Set argument value in self."""
         self.args[key] = val
-
-    def __delitem__(self, key):
-        """Delete argument in self."""
-        del self.args[key]
 
     def get(self, key, default=None):
         """Get argument value or default from self or base."""
@@ -768,6 +773,7 @@ def rescale_makethin(elem, ratio):
     NOTE: rescale_makethin is currently not recommended!  If you use it,
     you have to make sure, your slice length will be sufficiently small!
     """
+    # TODO: check these with MAKETHIN conventions from MAD-X
     base_type = elem.base_type
     if base_type not in ('sbend', 'quadrupole', 'solenoid'):
         return elem

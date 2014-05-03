@@ -648,7 +648,8 @@ class Document(list):
         # TODO: lookup table for template elements
 
     def transform(self, node_transform):
-        return Document(node_transform(node, self, dicti())
+        defs = dicti()
+        return Document(node_transform(node, defs)
                         for node in self._nodes)
 
     @classmethod

@@ -366,7 +366,7 @@ class SequenceTransform(object):
 
     """Transform sequence."""
 
-    offsets = dicti(entry=0, centre=Decimal(0.5), exit=1)
+    offsets = dicti(entry=0, centre=Decimal(1)/2, exit=1)
 
     def __init__(self, slicing):
         # create slicer

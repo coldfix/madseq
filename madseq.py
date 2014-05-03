@@ -281,7 +281,7 @@ class Symbolic(Value):
     """Base class for identifiers and composed arithmetic expressions."""
 
     @classmethod
-    def parse(cls, text, assign=False):
+    def parse(cls, text, assign='='):
         """Parse either a :class:`Identifier` or a :class:`Composed`."""
         try:
             return Identifier.parse(text, assign)
@@ -334,9 +334,11 @@ class Composed(Symbolic):
     @classmethod
     def create(cls, a, x, b):
         """Create a composed expression from two other expressions."""
+        delayed = (getattr(a, 'assign', '=') == ':=' or
+                   getattr(b, 'assign', '=') == ':=')
         return Composed(
             ' '.join((format_safe(a), x, format_safe(b))),
-            getattr(a, 'assign', False) or getattr(b, 'assign', False))
+            ':=' if delayed else '=')
 
     @property
     def safe_expr(self):
@@ -714,7 +716,7 @@ class ElementTransform(object):
         """
         slice_len = elem_len / slice_num
         slice = self._rescale(elem, 1/Decimal(slice_num)).copy()
-        slice['at'] = offset + (Identifier('i', True) + refer) * slice_len
+        slice['at'] = offset + (Identifier('i') + refer) * slice_len
         yield Text('i = 0;')
         yield Text('while (i < %s) {' % slice_num)
         yield slice

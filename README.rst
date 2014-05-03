@@ -15,9 +15,11 @@ Dependencies
 
 - docopt_ to parse command line options
 - pydicti_ to store and access element attributes
+- pyyaml_ to parse slicing definition and use YAML output format
 
 .. _docopt: http://docopt.org/
 .. _pydicti: https://github.com/coldfix/pydicti
+.. _pyyaml: https://pypi.python.org/pypi/PyYAML/
 
 
 Installation
@@ -49,6 +51,36 @@ The command should be called as follows::
 If ``<input>`` is not specified the standard input stream will be used to
 read the input file. Respectively, the standard output stream will be used
 if ``<output>`` is not specified.
+
+The slicing definition defines a list of slicing instructions where each
+entry is a dictionary with the following groups of mutually exclusive keys::
+
+    str type: match only elements with the specified type
+    str name: match only elements with the specified name
+
+    float density: slice element with the specified number of slices per meter
+    int slice: slice element using a fixed count, default=1
+
+    bool makethin: whether to convert the slices  to MULTIPOLE
+
+    bool use_optics: whether to put a template for the element in front
+
+    str style: slicing style, either 'uniform' or 'loop', defaults to 'uniform'
+
+
+Example file:
+
+.. code-block:: yaml
+
+    - type: drift
+      density: 10
+    - name: B1DK1
+      slice: 10
+      makethin: true
+      style: uniform
+
+Note, that even if an element is matched by multiple rules, only the first
+one will be used.
 
 
 Caution

@@ -166,7 +166,7 @@ def format_value(value):
         elif isinstance(value, (tuple, list)):
             return '{' + ','.join(map(format_value, value)) + '}'
         else:
-            raise TypeError("Unknown data type: {!r}".format(value))
+            raise TypeError("Unknown data type: {0!r}".format(value))
 
 
 def format_safe(value):
@@ -242,7 +242,7 @@ def parse_number(text):
         try:
             return Decimal(text)
         except InvalidOperation:
-            raise ValueError("Not a floating point: {!r}".format(text))
+            raise ValueError("Not a floating point: {0!r}".format(text))
 
 
 @none_checked
@@ -251,7 +251,7 @@ def parse_string(text):
     try:
         return regex.is_string.match(str(text)).groups()[0]
     except AttributeError:
-        raise ValueError("Invalid string: {!r}".format(text))
+        raise ValueError("Invalid string: {0!r}".format(text))
 
 
 class Array(Value):
@@ -265,15 +265,15 @@ class Array(Value):
         """Parse a MAD-X array."""
         text = text.strip()
         if text[0] != '{':
-            raise ValueError("Invalid array: {!r}".format(text))
+            raise ValueError("Invalid array: {0!r}".format(text))
         if text[-1] != '}':
-            raise Exception("Ill-formed ARRAY: {!r}".format(text))
+            raise Exception("Ill-formed ARRAY: {0!r}".format(text))
         try:
             return cls([Value.parse(field.strip(), assign)
                         for field in text[1:-1].split(',')],
                        assign)
         except ValueError:
-            raise Exception("Ill-formed ARRAY: {!r}".format(text))
+            raise Exception("Ill-formed ARRAY: {0!r}".format(text))
 
     @property
     def expr(self):
@@ -323,7 +323,7 @@ class Identifier(Symbolic):
         try:
             return cls(regex.is_identifier.match(text).groups()[0], assign)
         except AttributeError:
-            raise ValueError("Invalid identifier: {!r}".format(text))
+            raise ValueError("Invalid identifier: {0!r}".format(text))
 
 
 class Composed(Symbolic):
@@ -693,7 +693,7 @@ class ElementTransform(object):
         elif style == 'loop':
             self._distribution = self.uniform_slice_loop
         else:
-            raise ValueError("Unknown slicing style: {!r}".format(style))
+            raise ValueError("Unknown slicing style: {0!r}".format(style))
 
     def slice(self, elem, offset, refer):
         """
@@ -972,7 +972,7 @@ class Document(list):
         elif fmt == 'madx':
             stream.write("\n".join(map(str, self._nodes)))
         else:
-            raise ValueError("Invalid format code: {!r}".format(fmt))
+            raise ValueError("Invalid format code: {0!r}".format(fmt))
 
 
 def main(argv=None):

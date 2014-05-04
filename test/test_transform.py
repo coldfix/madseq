@@ -19,6 +19,15 @@ class Test_ElementTransform(unittest.TestCase):
         tpl, el, l = transformer.slice(elem, 0, 0)
         self.assertEqual(l, init_l)
 
+    # TODO...
+
+
+class Test_SequenceTransform(unittest.TestCase):
+
+    # TODO...
+ 
+    pass
+
 
 class Test_rescale_makethin(unittest.TestCase):
 
@@ -29,7 +38,7 @@ class Test_rescale_makethin(unittest.TestCase):
         sbend = madseq.Element(None, 'SBEND', odicti(angle=pi, hgap=1, L=l))
         scaled = madseq.rescale_makethin(sbend, ratio)
         self.assertEqual(scaled['KNL'], [pi*ratio])
-        self.assertEqual(scaled['lrad'], l)  # CHECK
+        self.assertEqual(scaled['lrad'], l * ratio)
         self.assertEqual(scaled.get('angle'), None)
         self.assertEqual(scaled.get('hgap'), None)
         self.assertEqual(scaled.type, 'multipole')
@@ -40,8 +49,8 @@ class Test_rescale_makethin(unittest.TestCase):
         ratio = 0.47
         quad = madseq.Element(None, 'QUADRUPOLE', odicti(K1=pi, L=l))
         scaled = madseq.rescale_makethin(quad, ratio)
-        self.assertEqual(scaled['KNL'], [0, pi*l])
-        self.assertEqual(scaled['lrad'], l)  # CHECK
+        self.assertEqual(scaled['KNL'], [0, pi*l*ratio])
+        self.assertEqual(scaled['lrad'], l * ratio)
         self.assertEqual(scaled.get('K1'), None)
         self.assertEqual(scaled.type, 'multipole')
 
@@ -51,9 +60,8 @@ class Test_rescale_makethin(unittest.TestCase):
         ratio = 0.79
         sol = madseq.Element(None, 'solenoid', odicti(Ks=pi, L=l))
         scaled = madseq.rescale_makethin(sol, ratio)
-        self.assertEqual(scaled['ksi'], pi*ratio)
-        self.assertEqual(scaled['lrad'], l*ratio)  # CHECK
-        self.assertEqual(scaled.get('Ks'), None)
+        self.assertEqual(scaled['ksi'], pi*l*ratio)
+        self.assertEqual(scaled['lrad'], l*ratio)
         self.assertEqual(scaled.type, 'solenoid')
 
 

@@ -757,6 +757,7 @@ class ElementTransform(object):
 
 def rescale_thick(elem, ratio):
     """Shrink/grow element size, while leaving the element type 'as is'."""
+    # TODO: implement this for all sorts of elements..
     if ratio == 1:
         return elem
     scaled = elem.copy()
@@ -772,27 +773,33 @@ def rescale_makethin(elem, ratio):
 
     NOTE: rescale_makethin is currently not recommended!  If you use it,
     you have to make sure, your slice length will be sufficiently small!
+
+    Furthermore, most MAD-X elements and parameters are not dealt with!
     """
-    # TODO: check these with MAKETHIN conventions from MAD-X
+    # TODO: handle more elements (sextupole, ...?)
+    # TODO: check/modify more parameters
     base_type = elem.base_type
     if base_type not in ('sbend', 'quadrupole', 'solenoid'):
         return elem
     if base_type == 'solenoid':
         elem = elem.copy()
-        elem['ksi'] = elem['KS'] * ratio
+        elem['ksi'] = elem['KS'] * elem['L'] * ratio
         elem['lrad'] = elem['L'] * ratio
         elem['L'] = 0
         return elem
     elem = Element(elem.name, 'multipole', elem.all_args)
     if base_type == 'sbend':
-        elem['KNL'] = [elem['angle'] * ratio]
-        del elem['angle']
-        del elem['HGAP']
+        elem['KNL'] = [elem.pop('angle') * ratio]
+        elem.pop('HGAP', None)
     elif base_type == 'quadrupole':
-        elem['KNL'] = [0, elem['K1'] * elem['L']]
-        del elem['K1']
-    # replace L by LRAD property
-    elem['lrad'] = elem.pop('L', None)
+        if 'K1' in elem:
+            elem['KNL'] = [0, elem['K1'] * elem['L'] * ratio]
+            del elem['K1']
+        if 'K1S' in elem:
+            elem['KSL'] = [0, elem['K1S'] * elem['L'] * ratio]
+            del elem['K1S']
+    if 'L' in elem:
+        elem['lrad'] = elem.pop('L') * ratio
     return elem
 
 

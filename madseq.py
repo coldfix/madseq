@@ -580,8 +580,9 @@ class SequenceTransform(object):
         table.
         """
 
-        if isinstance(node, (Element, Sequence)):
+        if isinstance(node, Element):
             defs[node.name] = node
+            node._base = defs.get(node.type)
         if not isinstance(node, Sequence):
             return node
 

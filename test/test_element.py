@@ -1,7 +1,7 @@
 # test utilities
 import unittest
 
-from pydicti import odicti
+from pydicti import odicti, dicti
 
 # tested module
 import madseq
@@ -38,8 +38,8 @@ class Test_Element(unittest.TestCase):
         el1 = madseq.Element(None, None, odicti(a='a1', b='b1', d='d1'), el0)
         el2 = madseq.Element(None, None, odicti(a='a2'), el1)
         self.assertEqual(el2.all_args,
-                         odicti([('c', 'c0'), ('b', 'b1'),
-                                 ('d', 'd1'), ('a', 'a2')]))
+                         dicti([('c', 'c0'), ('b', 'b1'),
+                                ('d', 'd1'), ('a', 'a2')]))
 
     def test_copy(self):
         el = madseq.Element(None, None, odicti(a=1))

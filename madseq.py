@@ -581,7 +581,7 @@ class SequenceTransform(object):
         """
 
         if isinstance(node, Element):
-            defs[node.name] = node
+            defs[str(node.name)] = node
             node._base = defs.get(node.type)
         if not isinstance(node, Sequence):
             return node

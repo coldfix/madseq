@@ -51,8 +51,8 @@ class Test_Element(unittest.TestCase):
 
     def test_contains(self):
         el = madseq.Element(None, None, odicti(a=1))
-        self.assertIn('a', el)
-        self.assertNotIn('b', el)
+        self.assertTrue('a' in el)
+        self.assertFalse('b' in el)
 
     def test_delitem(self):
         el0 = madseq.Element(None, None, odicti(a=1))

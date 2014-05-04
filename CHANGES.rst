@@ -1,6 +1,15 @@
 Changelog
 ~~~~~~~~~
 
+0.4.3
+=====
+
+- fix some sliced multipole coefficients
+- handle QUADRUPOLE.K1S in makethin
+- fix a naming problem when slicing with template
+- fix python3 problems
+
+
 0.4.2
 =====
 

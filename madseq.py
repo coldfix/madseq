@@ -36,7 +36,7 @@ from pydicti import odicti, dicti
 # meta data
 #----------------------------------------
 
-__version__ = 'madseq 0.4.2'
+__version__ = 'madseq 0.4.3'
 
 __all__ = [
     'Element', 'Sequence', 'Document',

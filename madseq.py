@@ -730,7 +730,7 @@ class ElementTransform(object):
         for slice_idx in range(slice_num):
             slice = elem.copy()
             slice['at'] = offset + (slice_idx + refer)*slice_len
-            if slice_num > 1:
+            if slice.name and slice_num > 1:
                 slice.name = elem.name + '..' + str(slice_idx)
             yield slice
 

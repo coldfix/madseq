@@ -1,6 +1,12 @@
 Changelog
 ~~~~~~~~~
 
+0.4.4
+=====
+
+- fix check for filename extension
+
+
 0.4.3
 =====
 

@@ -997,7 +997,7 @@ def main(argv=None):
     # get slicing definition
     if args['--slice']:
         with open(args['--slice']) as f:
-            if args['--slice'][:-4].lower() == '.json':
+            if args['--slice'][-5:].lower() == '.json':
                 transforms_doc = Json().load(f)
             else:
                 transforms_doc = Yaml().load(f)

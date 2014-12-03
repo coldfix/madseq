@@ -1,6 +1,6 @@
 madseq
 ------
-|Build Status| |Coverage| |Version| |Downloads| |License|
+|Build| |Coverage| |Version| |Downloads| |License|
 
 Description
 ~~~~~~~~~~~
@@ -95,12 +95,12 @@ Caution
   madseq script takes care of this responsibility.
 
 
-.. |Build Status| image:: https://api.travis-ci.org/coldfix/madseq.png?branch=master
-   :target: https://travis-ci.org/coldfix/madseq
+.. |Build| image:: https://api.travis-ci.org/hibtc/madseq.png?branch=master
+   :target: https://travis-ci.org/hibtc/madseq
    :alt: Build Status
 
-.. |Coverage| image:: https://coveralls.io/repos/coldfix/madseq/badge.png?branch=master
-   :target: https://coveralls.io/r/coldfix/madseq
+.. |Coverage| image:: https://coveralls.io/repos/hibtc/madseq/badge.png?branch=master
+   :target: https://coveralls.io/r/hibtc/madseq
    :alt: Coverage
 
 .. |Version| image:: https://pypip.in/v/madseq/badge.png

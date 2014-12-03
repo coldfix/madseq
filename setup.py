@@ -24,7 +24,7 @@ setup(
     author_email='t_glaessle@gmx.de',
     maintainer='Thomas Gläßle',
     maintainer_email='t_glaessle@gmx.de',
-    url='https://github.com/coldfix/madseq',
+    url='https://github.com/hibtc/madseq',
     license='MIT',
     py_modules=['madseq'],
     entry_points={

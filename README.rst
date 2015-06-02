@@ -103,15 +103,15 @@ Caution
    :target: https://coveralls.io/r/hibtc/madseq
    :alt: Coverage
 
-.. |Version| image:: https://pypip.in/v/madseq/badge.png
+.. |Version| image:: http://coldfix.de:8080/v/madseq/badge.png
    :target: https://pypi.python.org/pypi/madseq/
    :alt: Latest Version
 
-.. |Downloads| image:: https://pypip.in/d/madseq/badge.png
+.. |Downloads| image:: http://coldfix.de:8080/d/madseq/badge.png
    :target: https://pypi.python.org/pypi/madseq/
    :alt: Downloads
 
-.. |License| image:: https://pypip.in/license/madseq/badge.png
+.. |License| image:: http://coldfix.de:8080/license/madseq/badge.png
    :target: https://pypi.python.org/pypi/madseq/
    :alt: License
 

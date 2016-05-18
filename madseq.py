@@ -654,6 +654,9 @@ class ElementTransform(object):
 
         # whether to use or overwrite manual AT values
         if selector.get('use_at', True):
+            # Retrieve the entry (!) position of the element, this value will
+            # later be corrected for refer=centre/exit in the _distribution
+            # call:
             def _get_position(elem, elem_len, offset, refer):
                 try:
                     return elem['at'] - elem_len * refer

@@ -176,3 +176,7 @@ class Test_IntegrationTests(unittest.TestCase):
             qp, at=0.875;
             endsequence;
             """)
+
+
+if __name__ == '__main__':
+    unittest.main()

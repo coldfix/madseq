@@ -1,6 +1,6 @@
 madseq
 ------
-|Build| |Coverage| |Version| |Downloads| |License|
+|Build| |Coverage| |Version| |License|
 
 Description
 ~~~~~~~~~~~
@@ -95,23 +95,18 @@ Caution
   madseq script takes care of this responsibility.
 
 
-.. |Build| image:: https://api.travis-ci.org/hibtc/madseq.png?branch=master
+.. |Build| image:: https://api.travis-ci.org/hibtc/madseq.svg?branch=master
    :target: https://travis-ci.org/hibtc/madseq
    :alt: Build Status
 
-.. |Coverage| image:: https://coveralls.io/repos/hibtc/madseq/badge.png?branch=master
+.. |Coverage| image:: https://coveralls.io/repos/hibtc/madseq/badge.svg?branch=master
    :target: https://coveralls.io/r/hibtc/madseq
    :alt: Coverage
 
-.. |Version| image:: http://coldfix.de:8080/v/madseq/badge.png
-   :target: https://pypi.python.org/pypi/madseq/
+.. |Version| image:: https://img.shields.io/pypi/v/madseq.svg
+   :target: https://pypi.python.org/pypi/madseq
    :alt: Latest Version
 
-.. |Downloads| image:: http://coldfix.de:8080/d/madseq/badge.png
-   :target: https://pypi.python.org/pypi/madseq/
-   :alt: Downloads
-
-.. |License| image:: http://coldfix.de:8080/license/madseq/badge.png
-   :target: https://pypi.python.org/pypi/madseq/
+.. |License| image:: https://img.shields.io/pypi/l/madseq.svg
+   :target: https://github.com/hibtc/madseq/blob/master/LICENSE
    :alt: License
-

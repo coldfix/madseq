@@ -95,18 +95,18 @@ Caution
   madseq script takes care of this responsibility.
 
 
-.. |Build| image:: https://api.travis-ci.org/hibtc/madseq.svg?branch=master
-   :target: https://travis-ci.org/hibtc/madseq
-   :alt: Build Status
+.. |Build| image::      https://api.travis-ci.org/hibtc/madseq.svg?branch=master
+   :target:             https://travis-ci.org/hibtc/madseq
+   :alt:                Build Status
 
-.. |Coverage| image:: https://coveralls.io/repos/hibtc/madseq/badge.svg?branch=master
-   :target: https://coveralls.io/r/hibtc/madseq
-   :alt: Coverage
+.. |Coverage| image::   https://coveralls.io/repos/hibtc/madseq/badge.svg?branch=master
+   :target:             https://coveralls.io/r/hibtc/madseq
+   :alt:                Coverage
 
-.. |Version| image:: https://img.shields.io/pypi/v/madseq.svg
-   :target: https://pypi.python.org/pypi/madseq
-   :alt: Latest Version
+.. |Version| image::    https://img.shields.io/pypi/v/madseq.svg
+   :target:             https://pypi.python.org/pypi/madseq
+   :alt:                Latest Version
 
-.. |License| image:: https://img.shields.io/pypi/l/madseq.svg
-   :target: https://github.com/hibtc/madseq/blob/master/LICENSE
-   :alt: License
+.. |License| image::    https://img.shields.io/pypi/l/madseq.svg
+   :target:             https://github.com/hibtc/madseq/blob/master/LICENSE
+   :alt:                License

@@ -1,0 +1,11 @@
+
+[
+{ "type": "quadrupole",
+  "slice": 10,
+  "makethin": true,
+  "style": "uniform",
+  "template": false,
+  "use_at": true },
+{ "name": "ll",
+  "template": true }
+]

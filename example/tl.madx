@@ -1,0 +1,7 @@
+
+qp: quadrupole, k1=1, l=2;
+
+seq: sequence;
+qq: qp, at=10;
+ll: sbend, l=1, angle=1;
+endsequence;

@@ -38,8 +38,8 @@ Usage
 The command should be called as follows::
 
     Usage:
-        madseq.py [-j|-y] [-s <slice>] [<input>] [<output>]
-        madseq.py (--help | --version)
+        madseq [-j|-y] [-s <slice>] [<input>] [<output>]
+        madseq (--help | --version)
 
     Options:
         -j, --json                      Use JSON as output format

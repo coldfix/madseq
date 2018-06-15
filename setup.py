@@ -15,9 +15,11 @@ try:
 except IOError:
     pass
 
+from madseq import __version__
+
 setup(
     name='madseq',
-    version='0.4.4',
+    version=__version__,
     description='Parser/transformator for MAD-X sequences',
     long_description=long_description,
     author='Thomas Gläßle',
@@ -29,7 +31,7 @@ setup(
     py_modules=['madseq'],
     entry_points={
         'console_scripts': [
-            'madseq = madseq:main'
+            'madseq = madseq.main:main'
         ]
     },
     install_requires=[

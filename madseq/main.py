@@ -36,8 +36,6 @@ from pydicti import odicti, dicti
 # meta data
 #----------------------------------------
 
-__version__ = 'madseq 0.4.4'
-
 __all__ = [
     'Element', 'Sequence', 'Document',
     'main'
@@ -982,6 +980,7 @@ def main(argv=None):
 
     # parse command line options
     from docopt import docopt
+    from madseq import __version__
     args = docopt(__doc__, argv, version=__version__)
 
     # perform input

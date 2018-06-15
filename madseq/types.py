@@ -471,6 +471,7 @@ class Sequence(object):
         it = iter(elements)
         for elem in it:
             if elem.type == 'sequence':
+                elem.args.setdefault('refer', 'entry')
                 seq = [elem]
                 for elem in it:
                     seq.append(elem)
@@ -479,7 +480,7 @@ class Sequence(object):
                 assert(elem.type == 'endsequence')
                 yield Sequence(seq)
             elif elem.type == 'line':
-                seq = [Element(elem.name, 'sequence', {})]
+                seq = [Element(elem.name, 'sequence', {'refer': 'entry'})]
                 seq.extend(by_name[el_name] for el_name in elem.elems)
                 seq.append(Element(None, 'endsequence', {}))
                 yield Sequence(seq)

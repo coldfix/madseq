@@ -33,6 +33,8 @@ class stri(str):
         return self.lower() == str(other).lower()
     def __ne__(self, other):
         return not (self == other)
+    def __hash__(self):
+        return hash(self.lower())
 
 
 class Re(object):

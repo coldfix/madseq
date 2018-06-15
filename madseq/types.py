@@ -3,7 +3,7 @@ from __future__ import division
 
 from decimal import Decimal, InvalidOperation
 
-from madseq.util import Re, stri, odicti, none_checked
+from madseq.util import Re, stri, dicti, odicti, none_checked
 
 
 class regex(object):
@@ -35,6 +35,9 @@ class regex(object):
 
     # MAD-X command: name: type, *args;
     cmd = Re(r'^\s*(?:(',identifier,r')\s*:)?\s*(',identifier,r')\s*(,.*)?;\s*$')
+
+    # MAD-X `LINE` statement:
+    line = Re(r'^\s*(?:(',identifier,r')\s*:)?\s*LINE\s*=\s*\(([^()]*)\)\s*;\s*$')
 
     #----------------------------------------
     # grouping expressions
@@ -394,11 +397,30 @@ class Element(object):
                 self.args == other.args)
 
 
+class Line(object):
+
+    def __init__(self, name, elems):
+        self.name = name
+        self.elems = elems
+        self.type = 'line'
+
+    @classmethod
+    def parse(cls, text):
+        """Parse element from MAD-X string."""
+        name, elems = regex.line.match(text).groups()
+        return cls(name, [el.strip() for el in elems.split(',')])
+
+    def __str__(self):
+        """Format element in MAD-X format."""
+        return '{}: LINE=({});'.format(self.name, ','.join(self.elems))
+
+
 class Text(str):
 
     """A text section in a MAD-X document."""
 
     type = None
+    name = None
 
 
 class Sequence(object):
@@ -444,6 +466,8 @@ class Sequence(object):
         :returns: unmodified elements and generated :class:`Sequence` objects
         :rtype: generator
         """
+        elements = list(elements)
+        by_name = dicti((str(el.name), el) for el in elements if el.name)
         it = iter(elements)
         for elem in it:
             if elem.type == 'sequence':
@@ -453,6 +477,11 @@ class Sequence(object):
                     if elem.type == 'endsequence':
                         break
                 assert(elem.type == 'endsequence')
+                yield Sequence(seq)
+            elif elem.type == 'line':
+                seq = [Element(elem.name, 'sequence', {})]
+                seq.extend(by_name[el_name] for el_name in elem.elems)
+                seq.append(Element(None, 'endsequence', {}))
                 yield Sequence(seq)
             else:
                 yield elem

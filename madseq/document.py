@@ -5,7 +5,7 @@ from itertools import chain
 
 from madseq.io import Json, Yaml
 from madseq.util import odicti, dicti
-from madseq.types import Element, Sequence, Text, regex
+from madseq.types import Element, Sequence, Line, Text, regex
 
 
 class Document(list):
@@ -48,10 +48,15 @@ class Document(list):
             raise ValueError(
                 "Not accepting multi-line commands: %s" % commands[-1])
         for command in commands[:-1]:
-            try:
-                yield Element.parse(command + ';')
-            except AttributeError:
-                yield Text(command + ';')
+            command = command + ';'
+            for parse in (Element.parse, Line.parse):
+                try:
+                    yield parse(command)
+                    break
+                except (ValueError, AttributeError):
+                    pass
+            else:
+                yield Text(command)
         if len(commands) == 1 and not comment:
             yield Text('')
 

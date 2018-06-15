@@ -28,7 +28,7 @@ setup(
     maintainer_email='t_glaessle@gmx.de',
     url='https://github.com/hibtc/madseq',
     license='MIT',
-    py_modules=['madseq'],
+    packages=['madseq'],
     entry_points={
         'console_scripts': [
             'madseq = madseq.main:main'

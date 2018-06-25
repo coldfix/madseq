@@ -458,7 +458,7 @@ class Sequence(object):
         return '\n'.join(map(str, self._preface + self._elements))
 
     @classmethod
-    def detect(cls, elements):
+    def detect(cls, elements, inline=False):
         """
         Filter SEQUENCE..ENDSEQUENCE groups in an element list.
 
@@ -481,7 +481,11 @@ class Sequence(object):
                 yield Sequence(seq)
             elif elem.type == 'line':
                 seq = [Element(elem.name, 'sequence', {'refer': 'entry'})]
-                seq.extend(by_name[el_name] for el_name in elem.elems)
+                if inline:
+                    seq.extend(by_name[el_name] for el_name in elem.elems)
+                else:
+                    seq.extend(Element(None, el_name, {}, by_name[el_name])
+                               for el_name in elem.elems)
                 seq.append(Element(None, 'endsequence', {}))
                 yield Sequence(seq)
             else:
